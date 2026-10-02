@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.api.dependencies import get_current_user_id
 from app.database import get_db
 from app.models.writing_attempt import WritingAttempt
+from app.models.writing_evaluation import WritingEvaluation
 from app.models.writing_submission import WritingSubmission
 from app.models.writing_task import WritingTask
 from app.models.writing_test import WritingTest
@@ -19,9 +20,11 @@ from app.schemas.writing import (
     WritingDraftRequest,
     WritingDraftResponse,
     WritingSubmitResponse,
+    WritingEvaluateResponse,
     WritingTestResponse,
 )
-from app.services.writing import count_words
+from app.services.writing import GeminiWritingEvaluator, count_words
+from app.config import settings
 
 router = APIRouter(prefix="/writing", tags=["Writing"])
 
@@ -233,3 +236,46 @@ async def get_writing_attempt(
         overall_band=float(attempt.overall_band) if attempt.overall_band is not None else None,
         submissions=attempt.submissions,
     )
+
+@router.post("/submissions/{submission_id}/evaluate", response_model=WritingEvaluateResponse)
+async def evaluate_writing_submission(
+    submission_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id),
+):
+    result = await db.execute(
+        select(WritingSubmission)
+        .join(WritingAttempt, WritingAttempt.id == WritingSubmission.attempt_id)
+        .where(WritingSubmission.id == submission_id, WritingAttempt.user_id == current_user_id)
+        .options(selectinload(WritingSubmission.task), selectinload(WritingSubmission.evaluation), selectinload(WritingSubmission.attempt))
+    )
+    submission = result.scalars().first()
+    if submission is None:
+        raise HTTPException(status_code=404, detail="Writing submission not found")
+    if submission.attempt.status == "in_progress":
+        raise HTTPException(status_code=400, detail="Submit the writing attempt before evaluation")
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=503, detail="AI evaluation is not configured")
+    evaluator = GeminiWritingEvaluator(settings.gemini_api_key, settings.gemini_model)
+    try:
+        evaluated = await evaluator.evaluate(submission.response_text, submission.task.prompt, submission.task.task_type)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"AI evaluation failed: {exc}") from exc
+    evaluation = submission.evaluation
+    if evaluation is None:
+        evaluation = WritingEvaluation(submission_id=submission.id)
+        db.add(evaluation)
+    evaluation.task_response_band = evaluated.task_response_band
+    evaluation.coherence_band = evaluated.coherence_band
+    evaluation.lexical_band = evaluated.lexical_band
+    evaluation.grammar_band = evaluated.grammar_band
+    evaluation.overall_band = evaluated.overall_band
+    evaluation.feedback = evaluated.feedback
+    evaluation.strengths = evaluated.strengths
+    evaluation.improvements = evaluated.improvements
+    evaluation.evaluated_by = evaluated.evaluated_by
+    evaluation.evaluated_at = datetime.now(UTC)
+    submission.attempt.status = "evaluated"
+    await db.commit()
+    await db.refresh(evaluation)
+    return WritingEvaluateResponse(submission_id=submission.id, status=submission.attempt.status, evaluation=evaluation)
