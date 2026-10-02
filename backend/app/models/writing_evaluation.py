@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,7 +17,8 @@ class WritingEvaluation(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     submission_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), unique=True, nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("writing_submissions.id", ondelete="CASCADE"),
+        unique=True, nullable=False, index=True
     )
     task_response_band: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
     task_achievement_band: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
