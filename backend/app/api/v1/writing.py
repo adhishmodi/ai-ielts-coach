@@ -276,10 +276,15 @@ async def evaluate_writing_submission(
     evaluation.improvements = evaluated.improvements
     evaluation.evaluated_by = evaluated.evaluated_by
     evaluation.evaluated_at = datetime.now(UTC)
-    all_evaluated = all(item.evaluation is not None for item in submission.attempt.submissions)
+    evaluated_result = await db.execute(
+        select(WritingSubmission)
+        .where(WritingSubmission.attempt_id == submission.attempt_id)
+        .options(selectinload(WritingSubmission.task), selectinload(WritingSubmission.evaluation))
+    )
+    evaluated_submissions = evaluated_result.scalars().unique().all()
+    all_evaluated = bool(evaluated_submissions) and all(item.evaluation is not None for item in evaluated_submissions)
     response_status = submission.attempt.status
     if all_evaluated:
-        evaluated_submissions = submission.attempt.submissions
         by_number = {item.task.task_number: item for item in evaluated_submissions}
         if 1 in by_number and 2 in by_number and by_number[1].evaluation and by_number[2].evaluation:
             task1_band = float(by_number[1].evaluation.overall_band)
