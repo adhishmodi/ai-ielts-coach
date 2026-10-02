@@ -11,7 +11,7 @@ from sqlalchemy.pool import NullPool
 from app.config import settings
 
 
-is_testing = os.getenv("ENV_FILE") == ".env.test"
+is_testing = os.getenv("ENV_FILE") == ".env.test" or os.getenv("TESTING") == "1"
 
 engine_kwargs = {
     "echo": True,
