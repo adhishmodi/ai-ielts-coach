@@ -275,7 +275,9 @@ async def evaluate_writing_submission(
     evaluation.improvements = evaluated.improvements
     evaluation.evaluated_by = evaluated.evaluated_by
     evaluation.evaluated_at = datetime.now(UTC)
-    submission.attempt.status = "evaluated"
+    all_evaluated = all(item.evaluation is not None for item in submission.attempt.submissions)
+    if all_evaluated:
+        submission.attempt.status = "evaluated"
     await db.commit()
     await db.refresh(evaluation)
     return WritingEvaluateResponse(submission_id=submission.id, status=submission.attempt.status, evaluation=evaluation)
