@@ -277,6 +277,7 @@ async def evaluate_writing_submission(
     evaluation.evaluated_by = evaluated.evaluated_by
     evaluation.evaluated_at = datetime.now(UTC)
     all_evaluated = all(item.evaluation is not None for item in submission.attempt.submissions)
+    response_status = submission.attempt.status
     if all_evaluated:
         evaluated_submissions = submission.attempt.submissions
         by_number = {item.task.task_number: item for item in evaluated_submissions}
@@ -285,6 +286,7 @@ async def evaluate_writing_submission(
             task2_band = float(by_number[2].evaluation.overall_band)
             submission.attempt.overall_band = calculate_writing_overall_band(task1_band, task2_band)
         submission.attempt.status = "evaluated"
+        response_status = "evaluated"
     await db.commit()
     await db.refresh(evaluation)
-    return WritingEvaluateResponse(submission_id=submission.id, status=submission.attempt.status, evaluation=evaluation)
+    return WritingEvaluateResponse(submission_id=submission.id, status=response_status, evaluation=evaluation)
