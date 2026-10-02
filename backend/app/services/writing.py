@@ -81,3 +81,58 @@ class RuleBasedWritingEvaluator(WritingEvaluator):
             improvements=["Add a detailed AI evaluation for criterion-level feedback."],
             evaluated_by="system",
         )
+
+@dataclass(frozen=True)
+class DetailedWritingEvaluationResult:
+    task_response_band: float
+    coherence_band: float
+    lexical_band: float
+    grammar_band: float
+    overall_band: float
+    feedback: str
+    strengths: list[str]
+    improvements: list[str]
+    evaluated_by: str = "ai"
+
+def _extract_json(text: str) -> dict:
+    import json
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE)
+    return json.loads(cleaned)
+
+class GeminiWritingEvaluator:
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash"):
+        self.api_key = api_key
+        self.model = model
+
+    async def evaluate(self, submission_text: str, task_prompt: str, task_type: str) -> DetailedWritingEvaluationResult:
+        import httpx
+        criterion = "Task Achievement" if task_type != "essay" else "Task Response"
+        prompt = (
+            "You are an IELTS Writing examiner. Evaluate the response using IELTS band descriptors.\n"
+            f"Task type: {task_type}\nCriterion: {criterion}\nTask prompt: {task_prompt}\n"
+            f"Candidate response:\n{submission_text}\n\n"
+            "Return ONLY JSON with task_band, coherence_band, lexical_band, grammar_band, feedback, strengths, improvements. "
+            "Use only half-band scores from 0.0 to 9.0 and do not invent errors."
+        )
+        body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"responseMimeType": "application/json"},
+        }
+        url = "https://generativelanguage.googleapis.com/v1beta/models/" + self.model + ":generateContent?key=" + self.api_key
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(url, json=body)
+            response.raise_for_status()
+            payload = response.json()
+        try:
+            text = payload["candidates"][0]["content"]["parts"][0]["text"]
+            data = _extract_json(text)
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise ValueError("Gemini returned an invalid evaluation response") from exc
+        task = validate_band(data["task_band"])
+        coherence = validate_band(data["coherence_band"])
+        lexical = validate_band(data["lexical_band"])
+        grammar = validate_band(data["grammar_band"])
+        overall = calculate_task_band(task, coherence, lexical, grammar)
+        return DetailedWritingEvaluationResult(task, coherence, lexical, grammar, overall, str(data["feedback"]), [str(x) for x in data["strengths"]], [str(x) for x in data["improvements"]])
