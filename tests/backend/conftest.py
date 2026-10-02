@@ -231,3 +231,39 @@ async def listening_test():
         await session.refresh(test)
 
         return test.id
+
+
+@pytest.fixture
+async def writing_test():
+    from app.models.writing_test import WritingTest
+    from app.models.writing_task import WritingTask
+
+    async with AsyncSessionLocal() as session:
+        test = WritingTest(
+            title="IELTS Academic Writing Practice",
+            description="Academic Writing Task 1 and Task 2 practice",
+            test_type="academic",
+            difficulty="medium",
+            time_limit_minutes=60,
+        )
+        task1 = WritingTask(
+            task_number=1,
+            task_type="graph",
+            prompt="The chart shows changes in household spending over a ten-year period. Summarise the information by selecting and reporting the main features.",
+            instructions="Write at least 150 words.",
+            minimum_words=150,
+            order=1,
+        )
+        task2 = WritingTask(
+            task_number=2,
+            task_type="essay",
+            prompt="Some people believe technology makes life easier, while others think it creates new problems. Discuss both views and give your own opinion.",
+            instructions="Write at least 250 words.",
+            minimum_words=250,
+            order=2,
+        )
+        test.tasks.extend([task1, task2])
+        session.add(test)
+        await session.commit()
+        await session.refresh(test)
+        return test.id
