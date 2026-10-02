@@ -11,6 +11,9 @@ from app.database import AsyncSessionLocal
 from app.models.passage import Passage
 from app.models.reading_question import ReadingQuestion
 from app.models.reading_test import ReadingTest
+from app.models.listening_test import ListeningTest
+from app.models.listening_section import ListeningSection
+from app.models.listening_question import ListeningQuestion
 
 
 
@@ -163,3 +166,68 @@ async def reading_test():
 
     return test_id
 
+
+@pytest.fixture
+async def listening_test():
+    async with AsyncSessionLocal() as session:
+        test = ListeningTest(
+            title="IELTS Academic Listening Practice",
+            description="A complete listening practice test",
+            difficulty="medium",
+            time_limit_minutes=40,
+        )
+
+        section1 = ListeningSection(
+            title="Section 1 - Social Conversation",
+            instructions="Listen and complete the answers.",
+            order=1,
+        )
+        section2 = ListeningSection(
+            title="Section 2 - Monologue",
+            instructions="Listen and choose the correct answers.",
+            order=2,
+        )
+
+        questions1 = [
+            ListeningQuestion(
+                question_text="What is the caller's surname?",
+                question_type="short_answer",
+                correct_answer="Patel",
+                explanation="The caller gives the surname Patel.",
+                order=1,
+            ),
+            ListeningQuestion(
+                question_text="What day is the appointment?",
+                question_type="short_answer",
+                correct_answer="Monday",
+                explanation="The appointment is on Monday.",
+                order=2,
+            ),
+            ListeningQuestion(
+                question_text="Which service is requested?",
+                question_type="multiple_choice",
+                options=["Delivery", "Collection", "Repair", "Refund"],
+                correct_answer="Delivery",
+                explanation="The caller requests delivery.",
+                order=3,
+            ),
+        ]
+
+        section2.questions.extend(questions1)
+
+        section2.questions.append(
+            ListeningQuestion(
+                question_text="What should visitors bring?",
+                question_type="note_completion",
+                correct_answer="ID",
+                explanation="Visitors must bring ID.",
+                order=1,
+            )
+        )
+
+        test.sections.extend([section1, section2])
+        session.add(test)
+        await session.commit()
+        await session.refresh(test)
+
+        return test.id
