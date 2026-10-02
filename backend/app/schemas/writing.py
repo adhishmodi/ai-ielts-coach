@@ -58,6 +58,12 @@ class WritingSubmitResponse(BaseModel):
     below_minimum_tasks: list[int]
 
 
+class WritingEvaluateResponse(BaseModel):
+    submission_id: UUID
+    status: str
+    evaluation: "WritingEvaluationResponse"
+
+
 class WritingEvaluationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
