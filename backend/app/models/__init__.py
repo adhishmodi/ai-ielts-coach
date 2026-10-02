@@ -10,6 +10,11 @@ from app.models.listening_section import ListeningSection
 from app.models.listening_question import ListeningQuestion
 from app.models.listening_attempt import ListeningAttempt
 from app.models.listening_answer import ListeningAnswer
+from app.models.writing_test import WritingTest
+from app.models.writing_task import WritingTask
+from app.models.writing_attempt import WritingAttempt
+from app.models.writing_submission import WritingSubmission
+from app.models.writing_evaluation import WritingEvaluation
 
 __all__ = [
     "User",
@@ -24,4 +29,9 @@ __all__ = [
     "ListeningQuestion",
     "ListeningAttempt",
     "ListeningAnswer",
+    "WritingTest",
+    "WritingTask",
+    "WritingAttempt",
+    "WritingSubmission",
+    "WritingEvaluation",
 ]
