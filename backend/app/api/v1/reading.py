@@ -299,7 +299,11 @@ async def get_reading_attempt(
         reading_test_id=attempt.reading_test_id,
         score=attempt.score,
         total_questions=total_questions,
-        band_score=float(attempt.band_score),
+        band_score=(
+            float(attempt.band_score)
+            if attempt.band_score is not None
+            else None
+        ),
         submitted_at=attempt.submitted_at,
         answers=answers,
     )
