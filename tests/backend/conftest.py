@@ -213,7 +213,7 @@ async def listening_test():
             ),
         ]
 
-        section2.questions.extend(questions1)
+        section1.questions.extend(questions1)
 
         section2.questions.append(
             ListeningQuestion(
