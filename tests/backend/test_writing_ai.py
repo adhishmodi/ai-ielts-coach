@@ -59,6 +59,7 @@ def test_gemini_evaluation_persists_feedback_and_scores(
         async def evaluate(self, submission_text, task_prompt, task_type):
             return DetailedWritingEvaluationResult(
                 task_response_band=6.5,
+                task_achievement_band=None,
                 coherence_band=6.0,
                 lexical_band=6.5,
                 grammar_band=6.0,
@@ -108,6 +109,7 @@ def test_gemini_evaluation_persists_feedback_and_scores(
         f"/api/v1/writing/attempts/{attempt}", headers=auth_headers
     )
     assert detail.json()["status"] == "evaluated"
+    assert detail.json()["overall_band"] == 6.5
 
 
 def test_evaluation_enforces_submission_ownership(
