@@ -1,5 +1,6 @@
 import os
 os.environ.setdefault("ENV_FILE", ".env")
+os.environ.setdefault("TESTING", "1")
 
 import uuid
 import pytest_asyncio
