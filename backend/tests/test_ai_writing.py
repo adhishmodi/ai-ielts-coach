@@ -1,11 +1,11 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from app.services.writing import GeminiWritingEvaluator
 
 def fake_response(payload):
-    r=AsyncMock()
-    r.raise_for_status=AsyncMock()
-    r.json.return_value=payload
+    r=Mock()
+    r.raise_for_status=Mock()
+    r.json=Mock(return_value=payload)
     return r
 
 @pytest.mark.asyncio
@@ -33,7 +33,7 @@ async def test_gemini_invalid_payload():
 
 @pytest.mark.asyncio
 async def test_gemini_http_error():
-    response=AsyncMock()
+    response=Mock()
     response.raise_for_status.side_effect=RuntimeError("boom")
     with patch("httpx.AsyncClient.post",new_callable=AsyncMock,return_value=response):
         with pytest.raises(RuntimeError): await GeminiWritingEvaluator("key").evaluate("response","prompt","essay")
