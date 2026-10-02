@@ -900,3 +900,69 @@ def test_start_reading_test_attempt_belongs_to_current_user(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Reading attempt not found"
+
+
+def test_get_reading_attempts_includes_in_progress_attempt(
+    client,
+    auth_headers,
+    reading_test,
+):
+    start_response = client.post(
+        f"/api/v1/reading/tests/{reading_test}/start",
+        headers=auth_headers,
+    )
+
+    assert start_response.status_code == 200
+
+    attempt_id = start_response.json()["attempt_id"]
+
+    response = client.get(
+        "/api/v1/reading/attempts",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+
+    attempts = response.json()
+
+    attempt = next(
+        attempt for attempt in attempts
+        if attempt["attempt_id"] == attempt_id
+    )
+
+    assert attempt["score"] is None
+    assert attempt["band_score"] is None
+    assert attempt["submitted_at"] is None
+    assert attempt["total_questions"] == 3
+
+
+def test_get_in_progress_reading_attempt_details(
+    client,
+    auth_headers,
+    reading_test,
+):
+    start_response = client.post(
+        f"/api/v1/reading/tests/{reading_test}/start",
+        headers=auth_headers,
+    )
+
+    assert start_response.status_code == 200
+
+    attempt_id = start_response.json()["attempt_id"]
+
+    response = client.get(
+        f"/api/v1/reading/attempts/{attempt_id}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+
+    result = response.json()
+
+    assert result["attempt_id"] == attempt_id
+    assert result["reading_test_id"] == str(reading_test)
+    assert result["score"] is None
+    assert result["band_score"] is None
+    assert result["submitted_at"] is None
+    assert result["total_questions"] == 3
+    assert result["answers"] == []
