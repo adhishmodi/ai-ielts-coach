@@ -84,7 +84,8 @@ class RuleBasedWritingEvaluator(WritingEvaluator):
 
 @dataclass(frozen=True)
 class DetailedWritingEvaluationResult:
-    task_response_band: float
+    task_response_band: float | None
+    task_achievement_band: float | None
     coherence_band: float
     lexical_band: float
     grammar_band: float
@@ -135,4 +136,4 @@ class GeminiWritingEvaluator:
         lexical = validate_band(data["lexical_band"])
         grammar = validate_band(data["grammar_band"])
         overall = calculate_task_band(task, coherence, lexical, grammar)
-        return DetailedWritingEvaluationResult(task, coherence, lexical, grammar, overall, str(data["feedback"]), [str(x) for x in data["strengths"]], [str(x) for x in data["improvements"]])
+        return DetailedWritingEvaluationResult(task if task_type == "essay" else None, task if task_type != "essay" else None, coherence, lexical, grammar, overall, str(data["feedback"]), [str(x) for x in data["strengths"]], [str(x) for x in data["improvements"]])
