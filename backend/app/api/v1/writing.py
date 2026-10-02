@@ -276,22 +276,29 @@ async def evaluate_writing_submission(
     evaluation.improvements = evaluated.improvements
     evaluation.evaluated_by = evaluated.evaluated_by
     evaluation.evaluated_at = datetime.now(UTC)
+    await db.flush()
     evaluated_result = await db.execute(
         select(WritingSubmission)
         .where(WritingSubmission.attempt_id == submission.attempt_id)
         .options(selectinload(WritingSubmission.task), selectinload(WritingSubmission.evaluation))
     )
     evaluated_submissions = evaluated_result.scalars().unique().all()
-    all_evaluated = bool(evaluated_submissions) and all(item.evaluation is not None for item in evaluated_submissions)
     response_status = submission.attempt.status
-    if all_evaluated:
+
+    # IELTS Writing has exactly two tasks. Once Task 2 is evaluated,
+    # both task evaluations are expected and the final weighted band can be stored.
+    if submission.task.task_number == 2:
         by_number = {item.task.task_number: item for item in evaluated_submissions}
-        if 1 in by_number and 2 in by_number and by_number[1].evaluation and by_number[2].evaluation:
+        if (
+            1 in by_number and 2 in by_number
+            and by_number[1].evaluation is not None
+            and by_number[2].evaluation is not None
+        ):
             task1_band = float(by_number[1].evaluation.overall_band)
             task2_band = float(by_number[2].evaluation.overall_band)
             submission.attempt.overall_band = calculate_writing_overall_band(task1_band, task2_band)
-        submission.attempt.status = "evaluated"
-        response_status = "evaluated"
+            submission.attempt.status = "evaluated"
+            response_status = "evaluated"
     await db.commit()
     await db.refresh(evaluation)
     return WritingEvaluateResponse(submission_id=submission.id, status=response_status, evaluation=evaluation)
