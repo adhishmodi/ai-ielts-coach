@@ -51,10 +51,10 @@ class ReadingSubmissionResponse(BaseModel):
 class ReadingAttemptResponse(BaseModel):
     attempt_id: UUID
     reading_test_id: UUID
-    score: int
+    score: int | None = None
     total_questions: int
-    band_score: float
-    submitted_at: datetime
+    band_score: float | None = None
+    submitted_at: datetime | None = None
 
 class ReadingAnswerDetailResponse(BaseModel):
     question_id: UUID
@@ -68,10 +68,10 @@ class ReadingAnswerDetailResponse(BaseModel):
 class ReadingAttemptDetailResponse(BaseModel):
     attempt_id: UUID
     reading_test_id: UUID
-    score: int
+    score: int | None = None
     total_questions: int
-    band_score: float
-    submitted_at: datetime
+    band_score: float | None = None
+    submitted_at: datetime | None = None
     answers: list[ReadingAnswerDetailResponse]
 
 class ReadingAttemptStartResponse(BaseModel):
