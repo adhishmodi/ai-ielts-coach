@@ -66,7 +66,7 @@ async def get_listening_test(
         .where(ListeningTest.id == test_id)
         .options(
             selectinload(ListeningTest.sections)
-            .selectinload("questions")
+            .selectinload(ListeningSection.questions)
         )
     )
     listening_test = result.scalars().unique().first()
@@ -217,7 +217,7 @@ async def get_listening_attempts(
         .options(
             selectinload(ListeningAttempt.listening_test)
             .selectinload(ListeningTest.sections)
-            .selectinload("questions")
+            .selectinload(ListeningSection.questions)
         )
         .order_by(ListeningAttempt.submitted_at.desc())
     )
@@ -263,7 +263,7 @@ async def get_listening_attempt(
             .selectinload(ListeningAnswer.question),
             selectinload(ListeningAttempt.listening_test)
             .selectinload(ListeningTest.sections)
-            .selectinload("questions"),
+            .selectinload(ListeningSection.questions),
         )
     )
     attempt = result.scalars().unique().first()
