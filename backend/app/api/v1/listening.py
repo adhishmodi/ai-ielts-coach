@@ -12,6 +12,7 @@ from app.models.listening_answer import ListeningAnswer
 from app.models.listening_attempt import ListeningAttempt
 from app.models.listening_question import ListeningQuestion
 from app.models.listening_test import ListeningTest
+from app.models.listening_section import ListeningSection
 from app.schemas.listening import (
     ListeningAnswerDetailResponse,
     ListeningAttemptDetailResponse,
@@ -47,7 +48,7 @@ async def get_listening_tests(
         select(ListeningTest)
         .options(
             selectinload(ListeningTest.sections)
-            .selectinload("questions")
+            .selectinload(ListeningSection.questions)
         )
         .order_by(ListeningTest.created_at.desc())
     )
@@ -124,7 +125,7 @@ async def submit_listening_test(
         .options(
             selectinload(ListeningAttempt.listening_test)
             .selectinload(ListeningTest.sections)
-            .selectinload("questions")
+            .selectinload(ListeningSection.questions)
         )
     )
     attempt = result.scalars().unique().first()
