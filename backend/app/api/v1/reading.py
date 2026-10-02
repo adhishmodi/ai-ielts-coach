@@ -231,7 +231,11 @@ async def get_reading_attempts(
                 len(passage.questions)
                 for passage in attempt.reading_test.passages
             ),
-            band_score=float(attempt.band_score),
+            band_score=(
+                float(attempt.band_score)
+                if attempt.band_score is not None
+                else None
+            ),
             submitted_at=attempt.submitted_at,
         )
         for attempt in attempts
