@@ -23,7 +23,7 @@ from app.schemas.writing import (
     WritingEvaluateResponse,
     WritingTestResponse,
 )
-from app.services.writing import GeminiWritingEvaluator, count_words
+from app.services.writing import GeminiWritingEvaluator, calculate_writing_overall_band, count_words
 from app.config import settings
 
 router = APIRouter(prefix="/writing", tags=["Writing"])
@@ -266,6 +266,7 @@ async def evaluate_writing_submission(
         evaluation = WritingEvaluation(submission_id=submission.id)
         db.add(evaluation)
     evaluation.task_response_band = evaluated.task_response_band
+    evaluation.task_achievement_band = evaluated.task_achievement_band
     evaluation.coherence_band = evaluated.coherence_band
     evaluation.lexical_band = evaluated.lexical_band
     evaluation.grammar_band = evaluated.grammar_band
@@ -277,6 +278,12 @@ async def evaluate_writing_submission(
     evaluation.evaluated_at = datetime.now(UTC)
     all_evaluated = all(item.evaluation is not None for item in submission.attempt.submissions)
     if all_evaluated:
+        evaluated_submissions = submission.attempt.submissions
+        by_number = {item.task.task_number: item for item in evaluated_submissions}
+        if 1 in by_number and 2 in by_number and by_number[1].evaluation and by_number[2].evaluation:
+            task1_band = float(by_number[1].evaluation.overall_band)
+            task2_band = float(by_number[2].evaluation.overall_band)
+            submission.attempt.overall_band = calculate_writing_overall_band(task1_band, task2_band)
         submission.attempt.status = "evaluated"
     await db.commit()
     await db.refresh(evaluation)
