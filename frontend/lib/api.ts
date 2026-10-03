@@ -143,3 +143,90 @@ export type EvaluateResponse = {
   status: string;
   evaluation: Evaluation;
 };
+
+export type SpeakingPart = {
+  id: string;
+  part_number: number;
+  title: string;
+  instructions?: string | null;
+  prompt: string;
+  preparation_seconds: number;
+  response_seconds: number;
+  order: number;
+};
+
+export type SpeakingTest = {
+  id: string;
+  title: string;
+  description?: string | null;
+  test_type: string;
+  difficulty: string;
+  time_limit_minutes: number;
+  created_at: string;
+  parts: SpeakingPart[];
+};
+
+export type SpeakingAttemptStart = {
+  attempt_id: string;
+  speaking_test_id: string;
+  started_at: string;
+  status: string;
+};
+
+export type SpeakingDraft = {
+  response_id: string;
+  attempt_id: string;
+  part_id: string;
+  transcript: string;
+  audio_url?: string | null;
+  duration_seconds?: number | null;
+  submitted_at: string;
+};
+
+export type SpeakingEvaluation = {
+  id: string;
+  response_id: string;
+  fluency_band?: number | null;
+  lexical_band?: number | null;
+  grammar_band?: number | null;
+  pronunciation_band?: number | null;
+  overall_band?: number | null;
+  feedback?: string | null;
+  strengths?: string[] | null;
+  improvements?: string[] | null;
+  evaluated_by: string;
+  evaluated_at: string;
+};
+
+export type SpeakingResponseDetail = {
+  id: string;
+  part_id: string;
+  transcript: string;
+  audio_url?: string | null;
+  duration_seconds?: number | null;
+  submitted_at: string;
+  evaluation?: SpeakingEvaluation | null;
+};
+
+export type SpeakingAttemptDetail = {
+  attempt_id: string;
+  speaking_test_id: string;
+  status: string;
+  started_at: string;
+  submitted_at?: string | null;
+  overall_band?: number | null;
+  responses: SpeakingResponseDetail[];
+};
+
+export type SpeakingSubmitResponse = {
+  attempt_id: string;
+  status: string;
+  submitted_at: string;
+  missing_parts: number[];
+};
+
+export type SpeakingEvaluateResponse = {
+  response_id: string;
+  status: string;
+  evaluation: SpeakingEvaluation;
+};
