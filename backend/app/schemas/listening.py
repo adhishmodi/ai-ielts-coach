@@ -20,6 +20,7 @@ class ListeningSectionResponse(BaseModel):
     id: UUID
     title: str
     instructions: str | None = None
+    audio_url: str | None = None
     order: int
     questions: list[ListeningQuestionResponse]
 
