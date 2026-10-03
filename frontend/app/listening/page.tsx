@@ -146,7 +146,7 @@ export default function ListeningPage() {
               <div className="listening-audio-card">
                 <div>
                   <span className="eyebrow">LISTENING AUDIO</span>
-                  <strong>Section ${activeSection + 1} recording</strong>
+                  <strong>Section {activeSection + 1} recording</strong>
                   <span className="muted">Listen carefully before answering. You can replay the recording when practising.</span>
                 </div>
                 <audio className="listening-audio" controls preload="metadata" src={section.audio_url}>
@@ -156,7 +156,7 @@ export default function ListeningPage() {
             ) : (
               <div className="listening-notice"><strong>Audio not configured</strong><span>This section does not have an audio asset yet. Add an audio URL to the section content to enable playback.</span></div>
             )}
-            {section.instructions && <div className="prompt-card"><strong>Instructions</strong><p>{section.instructions}</p></div>
+            {section.instructions && <div className="prompt-card"><strong>Instructions</strong><p>{section.instructions}</p></div>}
             <div className="question-list">{section.questions.map((q, i) => <Question key={q.id} number={i + 1} question={q} value={answers[q.id] ?? ""} onChange={(value) => setAnswers((current) => ({ ...current, [q.id]: value }))} />)}</div>
           </>}
         </section>
