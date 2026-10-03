@@ -82,7 +82,6 @@ async def seed_reading(db: AsyncSession):
     test.passages = [passage]
     db.add(test)
     await db.commit()
-    await db.refresh(test)
     return test
 
 async def seed_listening(db: AsyncSession):
@@ -95,7 +94,6 @@ async def seed_listening(db: AsyncSession):
     test.sections = [section]
     db.add(test)
     await db.commit()
-    await db.refresh(test)
     return test
 
 async def seed_writing(db: AsyncSession):
@@ -106,5 +104,4 @@ async def seed_writing(db: AsyncSession):
     ]
     db.add(test)
     await db.commit()
-    await db.refresh(test)
     return test
