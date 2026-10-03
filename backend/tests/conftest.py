@@ -86,7 +86,7 @@ async def seed_reading(db: AsyncSession):
 
 async def seed_listening(db: AsyncSession):
     test = ListeningTest(title="Listening Test", description="desc", difficulty="easy", time_limit_minutes=40)
-    section = ListeningSection(title="Section 1", instructions="Listen", order=1)
+    section = ListeningSection(title="Section 1", instructions="Listen", audio_url="https://example.com/listening-section-1.mp3", order=1)
     section.questions = [
         ListeningQuestion(question_text="Q1", question_type="multiple_choice", correct_answer="London|london", order=1, options=["London", "Paris"]),
         ListeningQuestion(question_text="Q2", question_type="short_answer", correct_answer="coffee", order=2),
