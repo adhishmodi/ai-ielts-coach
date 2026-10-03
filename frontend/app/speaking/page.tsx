@@ -215,12 +215,12 @@ export default function SpeakingPage() {
     setRecording(false);
   }
 
-  async function saveCurrentPart() {
-    if (!attempt || !activePart || saving) return;
+  async function saveCurrentPart(): Promise<boolean> {
+    if (!attempt || !activePart || saving) return false;
     const transcript = transcriptRef.current[activePart.id]?.trim() ?? "";
     if (!transcript) {
       setError(`Part ${activePart.part_number} needs a transcript before you continue.`);
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -232,8 +232,10 @@ export default function SpeakingPage() {
       });
       setDrafts((current) => ({ ...current, [activePart.id]: saved }));
       setMessage("Response saved.");
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save response.");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -241,8 +243,8 @@ export default function SpeakingPage() {
 
   async function finishPart() {
     stopRecording();
-    await saveCurrentPart();
-    if (!activePart || !selectedTest) return;
+    const saved = await saveCurrentPart();
+    if (!saved || !activePart || !selectedTest) return;
     const nextIndex = activeIndex + 1;
     if (nextIndex < selectedTest.parts.length) {
       setActiveIndex(nextIndex);
