@@ -26,6 +26,7 @@ class ListeningSection(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    audio_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     order: Mapped[int] = mapped_column(Integer, nullable=False)
 
     listening_test: Mapped["ListeningTest"] = relationship(
