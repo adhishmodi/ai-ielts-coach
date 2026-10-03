@@ -255,7 +255,7 @@ export type ReadingAnswerDetail = { question_id: string; question_text: string; 
 export type ReadingAttemptDetail = { attempt_id: string; reading_test_id: string; score?: number | null; total_questions: number; band_score?: number | null; submitted_at?: string | null; answers: ReadingAnswerDetail[] };
 
 export type ListeningQuestion = { id: string; question_text: string; question_type: string; options?: unknown[] | null; order: number };
-export type ListeningSection = { id: string; title: string; instructions?: string | null; order: number; questions: ListeningQuestion[] };
+export type ListeningSection = { id: string; title: string; instructions?: string | null; audio_url?: string | null; order: number; questions: ListeningQuestion[] };
 export type ListeningTest = { id: string; title: string; description?: string | null; difficulty: string; time_limit_minutes: number; sections: ListeningSection[] };
 export type ListeningAttemptStart = { attempt_id: string; listening_test_id: string; started_at: string };
 export type ListeningSubmissionResponse = { attempt_id: string; score: number; total_questions: number; band_score: number };
