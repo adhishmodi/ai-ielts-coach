@@ -245,3 +245,19 @@ export type SkillAttempt = {
   submitted_at?: string | null;
   status?: string;
 };
+
+export type ReadingQuestion = { id: string; question_text: string; question_type: string; options?: unknown[] | null; order: number };
+export type ReadingPassage = { id: string; title: string; content: string; order: number; questions: ReadingQuestion[] };
+export type ReadingTest = { id: string; title: string; description?: string | null; difficulty: string; time_limit_minutes: number; passages: ReadingPassage[] };
+export type ReadingAttemptStart = { attempt_id: string; reading_test_id: string; started_at: string };
+export type ReadingSubmissionResponse = { attempt_id: string; score: number; total_questions: number; band_score: number };
+export type ReadingAnswerDetail = { question_id: string; question_text: string; question_type: string; user_answer: string; correct_answer: string; is_correct: boolean };
+export type ReadingAttemptDetail = { attempt_id: string; reading_test_id: string; score?: number | null; total_questions: number; band_score?: number | null; submitted_at?: string | null; answers: ReadingAnswerDetail[] };
+
+export type ListeningQuestion = { id: string; question_text: string; question_type: string; options?: unknown[] | null; order: number };
+export type ListeningSection = { id: string; title: string; instructions?: string | null; order: number; questions: ListeningQuestion[] };
+export type ListeningTest = { id: string; title: string; description?: string | null; difficulty: string; time_limit_minutes: number; sections: ListeningSection[] };
+export type ListeningAttemptStart = { attempt_id: string; listening_test_id: string; started_at: string };
+export type ListeningSubmissionResponse = { attempt_id: string; score: number; total_questions: number; band_score: number };
+export type ListeningAnswerDetail = { question_id: string; question_text: string; question_type: string; user_answer: string; correct_answer: string; is_correct: boolean };
+export type ListeningAttemptDetail = { attempt_id: string; listening_test_id: string; score?: number | null; total_questions: number; band_score?: number | null; submitted_at?: string | null; answers: ListeningAnswerDetail[] };
