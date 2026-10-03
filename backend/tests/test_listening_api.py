@@ -13,7 +13,9 @@ async def test_listening_auth_required(client):
 async def test_listening_list_detail_start(client,db):
     test=await seed_listening(db); h=await headers(client)
     assert (await client.get("/api/v1/listening/tests",headers=h)).status_code==200
-    assert len((await client.get(f"/api/v1/listening/tests/{test.id}",headers=h)).json()["sections"])==1
+    detail = (await client.get(f"/api/v1/listening/tests/{test.id}",headers=h)).json()
+    assert len(detail["sections"]) == 1
+    assert detail["sections"][0]["audio_url"] == "https://example.com/listening-section-1.mp3"
     assert (await client.post(f"/api/v1/listening/tests/{test.id}/start",headers=h)).status_code==200
 
 @pytest.mark.asyncio
