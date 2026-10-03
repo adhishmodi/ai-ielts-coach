@@ -23,7 +23,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       saveTokens(tokens);
-      router.replace("/writing");
+      router.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -36,7 +36,7 @@ export default function LoginPage() {
       <form className="auth-card" onSubmit={submit}>
         <div className="eyebrow">AI IELTS COACH</div>
         <h1>Welcome back</h1>
-        <p className="muted">Sign in to continue your IELTS Writing practice.</p>
+        <p className="muted">Sign in to continue your IELTS preparation.</p>
         <label>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
         <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         {error && <div className="error-box">{error}</div>}
