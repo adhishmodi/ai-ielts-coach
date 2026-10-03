@@ -163,7 +163,7 @@ export default function WritingPage() {
   if (view === "select") {
     return (
       <main className="app-shell">
-        <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing</span></div><button className="ghost-button" onClick={() => { clearTokens(); router.replace("/login"); }}>Sign out</button></header>
+        <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/speaking")}>Speaking</button><button className="ghost-button" onClick={() => { clearTokens(); router.replace("/login"); }}>Sign out</button></div></header>
         <section className="hero"><div className="eyebrow">WRITING PRACTICE</div><h1>Build your Writing score.</h1><p>Choose a test, write both tasks under exam conditions, and receive AI feedback after submission.</p></section>
         {error && <div className="error-box page-message">{error}</div>}
         <section className="test-grid">
@@ -185,7 +185,7 @@ export default function WritingPage() {
   if (view === "results" && selectedTest && attemptDetail) {
     return (
       <main className="app-shell">
-        <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing results</span></div><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></header>
+        <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/speaking")}>Speaking</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
         <section className="result-hero">
           <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Writing review</h1><p className="muted">{submitted?.below_minimum_tasks.length ? `Task ${submitted.below_minimum_tasks.join(" and ")} fell below the recommended word count.` : "Both tasks were submitted successfully."}</p></div>
           <div className="overall-band"><span>Overall</span><strong>{attemptDetail.overall_band ?? "—"}</strong></div>
@@ -217,7 +217,7 @@ export default function WritingPage() {
     <main className="app-shell test-shell">
       <header className="topbar">
         <div><div className="brand">AI IELTS Coach</div><span className="muted">{selectedTest?.title}</span></div>
-        <div className={secondsLeft <= 300 ? "timer danger" : "timer"}>{formatTime(secondsLeft)}</div>
+        <div className="top-actions"><button className="ghost-button" onClick={() => router.push("/speaking")}>Speaking</button><div className={secondsLeft <= 300 ? "timer danger" : "timer"}>{formatTime(secondsLeft)}</div></div>
       </header>
       <div className="test-layout">
         <aside className="task-sidebar">
