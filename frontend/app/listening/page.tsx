@@ -142,8 +142,21 @@ export default function ListeningPage() {
         </aside>
         <section className="reading-workspace">
           {section && <><div className="skill-workspace-head"><div><span className="eyebrow">SECTION {activeSection + 1}</span><h1>{section.title}</h1></div><span>{section.questions.length} questions</span></div>
-            <div className="listening-notice"><strong>Audio area</strong><span>This test currently provides the question content through the API. Audio playback can be connected here when audio assets are added to Listening test content.</span></div>
-            {section.instructions && <div className="prompt-card"><strong>Instructions</strong><p>{section.instructions}</p></div>}
+            {section.audio_url ? (
+              <div className="listening-audio-card">
+                <div>
+                  <span className="eyebrow">LISTENING AUDIO</span>
+                  <strong>Section ${activeSection + 1} recording</strong>
+                  <span className="muted">Listen carefully before answering. You can replay the recording when practising.</span>
+                </div>
+                <audio className="listening-audio" controls preload="metadata" src={section.audio_url}>
+                  Your browser does not support audio playback.
+                </audio>
+              </div>
+            ) : (
+              <div className="listening-notice"><strong>Audio not configured</strong><span>This section does not have an audio asset yet. Add an audio URL to the section content to enable playback.</span></div>
+            )}
+            {section.instructions && <div className="prompt-card"><strong>Instructions</strong><p>{section.instructions}</p></div>
             <div className="question-list">{section.questions.map((q, i) => <Question key={q.id} number={i + 1} question={q} value={answers[q.id] ?? ""} onChange={(value) => setAnswers((current) => ({ ...current, [q.id]: value }))} />)}</div>
           </>}
         </section>
