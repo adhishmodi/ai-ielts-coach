@@ -230,3 +230,18 @@ export type SpeakingEvaluateResponse = {
   status: string;
   evaluation: SpeakingEvaluation;
 };
+
+
+export type SkillAttempt = {
+  attempt_id: string;
+  reading_test_id?: string;
+  listening_test_id?: string;
+  writing_test_id?: string;
+  speaking_test_id?: string;
+  score?: number | null;
+  total_questions?: number | null;
+  band_score?: number | null;
+  overall_band?: number | null;
+  submitted_at?: string | null;
+  status?: string;
+};
