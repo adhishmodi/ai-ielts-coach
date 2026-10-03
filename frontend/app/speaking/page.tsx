@@ -110,8 +110,7 @@ export default function SpeakingPage() {
       if (phase === "preparation") {
         beginSpeaking();
       } else {
-        stopRecording();
-        void saveCurrentPart();
+        void finishPart();
       }
       return;
     }
@@ -177,6 +176,7 @@ export default function SpeakingPage() {
         for (let i = 0; i < event.results.length; i += 1) {
           finalText += event.results[i][0].transcript;
         }
+        setInterimTranscript("");
         setTranscripts((current) => ({ ...current, [activePart.id]: finalText.trim() }));
       };
       recognition.onerror = () => setMessage("Speech recognition stopped. You can continue with manual transcript editing.");
