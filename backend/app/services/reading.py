@@ -4,6 +4,8 @@ SUPPORTED_QUESTION_TYPES = {
     "true_false_not_given",
     "yes_no_not_given",
     "short_answer",
+    "sentence_completion",
+    "summary_completion",
     "matching",
 }
 
