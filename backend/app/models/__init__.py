@@ -15,6 +15,11 @@ from app.models.writing_task import WritingTask
 from app.models.writing_attempt import WritingAttempt
 from app.models.writing_submission import WritingSubmission
 from app.models.writing_evaluation import WritingEvaluation
+from app.models.speaking_test import SpeakingTest
+from app.models.speaking_part import SpeakingPart
+from app.models.speaking_attempt import SpeakingAttempt
+from app.models.speaking_response import SpeakingResponse
+from app.models.speaking_evaluation import SpeakingEvaluation
 
 __all__ = [
     "User",
@@ -34,4 +39,9 @@ __all__ = [
     "WritingAttempt",
     "WritingSubmission",
     "WritingEvaluation",
+    "SpeakingTest",
+    "SpeakingPart",
+    "SpeakingAttempt",
+    "SpeakingResponse",
+    "SpeakingEvaluation",
 ]
