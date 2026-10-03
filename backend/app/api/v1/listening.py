@@ -186,7 +186,7 @@ async def submit_listening_test(
     for question_id, answer in submitted_answers.items():
         db.add(
             ListeningAnswer(
-                attempt=attempt,
+                attempt_id=attempt.id,
                 question_id=UUID(question_id),
                 answer=answer,
             )
