@@ -1,4 +1,3 @@
-import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -11,14 +10,17 @@ from sqlalchemy.pool import NullPool
 from app.config import settings
 
 
-is_testing = os.getenv("ENV_FILE") == ".env.test" or os.getenv("TESTING") == "1"
-
+# Vercel runs the FastAPI app in short-lived serverless instances. Keeping a
+# SQLAlchemy connection pool inside each instance can exhaust connections and
+# make asyncpg/DNS connection attempts unreliable. NullPool lets Supabase/
+# Supavisor own the connection pooling instead.
 engine_kwargs = {
-    "echo": True,
+    "echo": False,
+    "poolclass": NullPool,
+    "connect_args": {
+        "timeout": 10,
+    },
 }
-
-if is_testing:
-    engine_kwargs["poolclass"] = NullPool
 
 
 database_url = settings.database_url.strip()
