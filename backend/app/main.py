@@ -24,12 +24,23 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 
-@app.get("/health")
-def health_check():
+
+def health_response():
     return {
         "status": "healthy",
         "service": "AI IELTS Coach API"
     }
+
+
+@app.get("/health")
+def health_check():
+    return health_response()
+
+
+@app.get("/api/health")
+def api_health_check():
+    return health_response()
+
 
 app.include_router(reading_router, prefix="/api/v1")
 app.include_router(listening_router, prefix="/api/v1")
