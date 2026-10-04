@@ -41,6 +41,10 @@ export default function LoginPage() {
         <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         {error && <div className="error-box">{error}</div>}
         <button className="primary-button" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+        <p className="muted auth-switch">
+          Don&apos;t have an account?{" "}
+          <a href="/register">Create one</a>
+        </p>
       </form>
     </main>
   );
