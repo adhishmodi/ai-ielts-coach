@@ -21,8 +21,19 @@ if is_testing:
     engine_kwargs["poolclass"] = NullPool
 
 
+database_url = settings.database_url.strip()
+
+# Vercel/Supabase commonly provide PostgreSQL URLs without an explicit
+# SQLAlchemy driver. This application uses asyncpg everywhere, so normalize
+# those URLs before creating the async engine.
+if database_url.startswith("postgres://"):
+    database_url = "postgresql+asyncpg://" + database_url[len("postgres://"):]
+elif database_url.startswith("postgresql://"):
+    database_url = "postgresql+asyncpg://" + database_url[len("postgresql://"):]
+
+
 engine = create_async_engine(
-    settings.database_url,
+    database_url,
     **engine_kwargs,
 )
 
