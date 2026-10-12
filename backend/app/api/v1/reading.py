@@ -25,6 +25,7 @@ from app.schemas.reading import (
 from app.services.reading import (
     calculate_reading_band,
     calculate_reading_score_by_question_type,
+    is_answer_correct,
     validate_question_type,
 )
 
@@ -281,9 +282,9 @@ async def get_reading_attempt(
             question_type=answer.question.question_type,
             user_answer=answer.answer,
             correct_answer=answer.question.correct_answer,
-            is_correct=(
-                answer.answer.strip().lower()
-                == answer.question.correct_answer.strip().lower()
+            is_correct=is_answer_correct(
+                answer.answer,
+                answer.question.correct_answer,
             ),
         )
         for answer in attempt.answers
