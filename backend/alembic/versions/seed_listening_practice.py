@@ -46,7 +46,7 @@ def upgrade() -> None:
         sa.column("section_id", postgresql.UUID(as_uuid=True)),
         sa.column("question_text", sa.Text),
         sa.column("question_type", sa.String),
-        sa.column("options", postgresql.JSONB),
+        sa.column("options", sa.JSON),
         sa.column("correct_answer", sa.Text),
         sa.column("explanation", sa.Text),
         sa.column("order", sa.Integer),
