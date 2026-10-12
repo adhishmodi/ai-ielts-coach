@@ -317,7 +317,7 @@ export default function SpeakingPage() {
               <button className="primary-button" disabled={busy} onClick={() => void startTest(test)}>{busy ? "Starting…" : "Start speaking test"}</button>
             </article>
           ))}
-          {!tests.length && !error && <div className="empty-card">Loading available Speaking tests…</div>}
+          {!tests.length && !error && <div className="empty-card">No Speaking practice tests are available yet. Please check back soon.</div>}
         </section>
       </main>
     );
