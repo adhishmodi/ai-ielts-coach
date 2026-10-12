@@ -19,6 +19,10 @@ engine_kwargs = {
     "poolclass": NullPool,
     "connect_args": {
         "timeout": 10,
+        # Supabase's transaction pooler (port 6543) can reuse a server-side
+        # connection across clients. Disable asyncpg's prepared statement
+        # cache to prevent DuplicatePreparedStatementError through PgBouncer.
+        "statement_cache_size": 0,
     },
 }
 
