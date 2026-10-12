@@ -569,7 +569,7 @@ def test_get_reading_attempt_details_contains_answer_information(
             "answers": [
                 {
                     "question_id": questions[0]["id"],
-                    "answer": "Ethiopia",
+                    "answer": "  ETHIOPIA  ",
                 },
                 {
                     "question_id": questions[1]["id"],
