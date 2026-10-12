@@ -98,7 +98,7 @@ export default function ListeningPage() {
           <div className="test-meta"><span>{test.sections.length} sections</span><span>{test.sections.reduce((n, s) => n + s.questions.length, 0)} questions</span><span>{test.time_limit_minutes} min</span></div>
           <button className="primary-button" disabled={busy} onClick={() => startTest(test)}>{busy ? "Starting…" : "Start test"}</button>
         </article>)}
-        {!tests.length && !error && <div className="empty-card">Loading available Listening tests…</div>}
+        {!tests.length && !error && <div className="empty-card">No Listening practice tests are available yet. Please check back soon.</div>}
       </section>
     </main>
   );
