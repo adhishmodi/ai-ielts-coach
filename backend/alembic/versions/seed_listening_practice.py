@@ -4,6 +4,7 @@ The audio recordings are public learning resources from the U.S. Department of S
 American English program. The question set is original practice material.
 """
 from typing import Sequence, Union
+from uuid import UUID
 
 from alembic import op
 import sqlalchemy as sa
@@ -14,9 +15,9 @@ down_revision: Union[str, Sequence[str], None] = "add_listening_section_audio"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-TEST_ID = "b2200000-0000-4000-8000-000000000001"
-SECTION_1_ID = "b2200000-0000-4000-8000-000000000011"
-SECTION_2_ID = "b2200000-0000-4000-8000-000000000012"
+TEST_ID = UUID("b2200000-0000-4000-8000-000000000001")
+SECTION_1_ID = UUID("b2200000-0000-4000-8000-000000000011")
+SECTION_2_ID = UUID("b2200000-0000-4000-8000-000000000012")
 
 
 def upgrade() -> None:
@@ -53,7 +54,7 @@ def upgrade() -> None:
 
     # A fixed ID makes the seed deterministic and safe to inspect.
     exists = bind.execute(
-        sa.select(tests.c.id).where(tests.c.id == sa.text(f"'{TEST_ID}'::uuid"))
+        sa.select(tests.c.id).where(tests.c.id == TEST_ID)
     ).first()
     if exists:
         return
@@ -97,7 +98,7 @@ def upgrade() -> None:
         questions.insert(),
         [
             {
-                "id": "b2200000-0000-4000-8000-000000000101",
+                "id": UUID("b2200000-0000-4000-8000-000000000101"),
                 "section_id": SECTION_1_ID,
                 "question_text": "What kind of situation is the first recording about?",
                 "question_type": "multiple_choice",
@@ -107,7 +108,7 @@ def upgrade() -> None:
                 "order": 1,
             },
             {
-                "id": "b2200000-0000-4000-8000-000000000102",
+                "id": UUID("b2200000-0000-4000-8000-000000000102"),
                 "section_id": SECTION_1_ID,
                 "question_text": "Where does the conversation most likely take place?",
                 "question_type": "multiple_choice",
@@ -117,7 +118,7 @@ def upgrade() -> None:
                 "order": 2,
             },
             {
-                "id": "b2200000-0000-4000-8000-000000000103",
+                "id": UUID("b2200000-0000-4000-8000-000000000103"),
                 "section_id": SECTION_1_ID,
                 "question_text": "Which skill is most useful for this recording?",
                 "question_type": "multiple_choice",
@@ -127,7 +128,7 @@ def upgrade() -> None:
                 "order": 3,
             },
             {
-                "id": "b2200000-0000-4000-8000-000000000201",
+                "id": UUID("b2200000-0000-4000-8000-000000000201"),
                 "section_id": SECTION_2_ID,
                 "question_text": "What is the main topic of the second recording?",
                 "question_type": "multiple_choice",
@@ -137,7 +138,7 @@ def upgrade() -> None:
                 "order": 1,
             },
             {
-                "id": "b2200000-0000-4000-8000-000000000202",
+                "id": UUID("b2200000-0000-4000-8000-000000000202"),
                 "section_id": SECTION_2_ID,
                 "question_text": "Which type of information should you listen for most carefully in a transportation conversation?",
                 "question_type": "multiple_choice",
