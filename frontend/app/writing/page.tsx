@@ -176,7 +176,7 @@ export default function WritingPage() {
               <button className="primary-button" disabled={busy} onClick={() => startTest(test)}>{busy ? "Starting…" : "Start test"}</button>
             </article>
           ))}
-          {!tests.length && !error && <div className="empty-card">Loading available Writing tests…</div>}
+          {!tests.length && !error && <div className="empty-card">No Writing practice tests are available yet. Please check back soon.</div>}
         </section>
       </main>
     );
