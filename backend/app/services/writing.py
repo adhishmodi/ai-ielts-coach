@@ -121,11 +121,31 @@ class GeminiWritingEvaluator:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"},
         }
-        url = "https://generativelanguage.googleapis.com/v1beta/models/" + self.model + ":generateContent?key=" + self.api_key
+        # Send the API key in a header, never in the URL where HTTP logs can expose it.
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            + self.model
+            + ":generateContent"
+        )
+        headers = {"x-goog-api-key": self.api_key}
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, json=body)
-            response.raise_for_status()
-            payload = response.json()
+            payload = None
+            for attempt in range(3):
+                response = await client.post(url, json=body, headers=headers)
+                # Gemini can transiently return 429/5xx under load. Retry briefly.
+                if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
+                    import asyncio
+                    await asyncio.sleep(0.5 * (2 ** attempt))
+                    continue
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    # Do not expose request details or credentials in API error messages.
+                    raise RuntimeError(
+                        f"Gemini API request failed with HTTP {response.status_code}"
+                    ) from exc
+                payload = response.json()
+                break
         try:
             text = payload["candidates"][0]["content"]["parts"][0]["text"]
             data = _extract_json(text)
