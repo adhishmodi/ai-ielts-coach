@@ -38,10 +38,11 @@ async def test_listening_review_includes_unanswered_and_explanation(client,db):
     assert r.status_code==200 and r.json()["score"]==1
     detail=(await client.get(f"/api/v1/listening/attempts/{aid}",headers=h)).json()
     assert len(detail["answers"])==2
-    assert detail["answers"][0]["is_correct"] is True
-    assert detail["answers"][0]["explanation"]=="The speaker clearly names London."
-    assert detail["answers"][1]["user_answer"]==""
-    assert detail["answers"][1]["is_correct"] is False
+    answers={answer["question_text"]: answer for answer in detail["answers"]}
+    assert answers["Q1"]["is_correct"] is True
+    assert answers["Q1"]["explanation"]=="The speaker clearly names London."
+    assert answers["Q2"]["user_answer"]==""
+    assert answers["Q2"]["is_correct"] is False
 
 @pytest.mark.asyncio
 async def test_listening_rejects_empty_duplicate(client,db):

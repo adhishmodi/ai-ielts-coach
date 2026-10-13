@@ -261,9 +261,7 @@ async def get_listening_attempt(
             ListeningAttempt.user_id == current_user_id,
         )
         .options(
-            selectinload(ListeningAttempt.answers)
-            .selectinload(ListeningAnswer.question)
-            .selectinload(ListeningQuestion.section),
+            selectinload(ListeningAttempt.answers),
             selectinload(ListeningAttempt.listening_test)
             .selectinload(ListeningTest.sections)
             .selectinload(ListeningSection.questions),
@@ -273,20 +271,29 @@ async def get_listening_attempt(
     if attempt is None:
         raise HTTPException(status_code=404, detail="Listening attempt not found")
 
+    saved_answers = {str(answer.question_id): answer for answer in attempt.answers}
+    section_titles = {
+        str(question.id): section.title
+        for section in attempt.listening_test.sections
+        for question in section.questions
+    }
     answers = [
         ListeningAnswerDetailResponse(
-            question_id=answer.question_id,
-            question_text=answer.question.question_text,
-            question_type=answer.question.question_type,
-            user_answer=answer.answer,
-            correct_answer=answer.question.correct_answer,
+            question_id=question.id,
+            question_text=question.question_text,
+            question_type=question.question_type,
+            user_answer=(saved_answers[str(question.id)].answer
+                         if str(question.id) in saved_answers else ""),
+            correct_answer=question.correct_answer,
             is_correct=is_answer_correct(
-                answer.answer, answer.question.correct_answer
+                saved_answers[str(question.id)].answer
+                if str(question.id) in saved_answers else "",
+                question.correct_answer,
             ),
-            explanation=answer.question.explanation,
-            section_title=answer.question.section.title,
+            explanation=question.explanation,
+            section_title=section_titles[str(question.id)],
         )
-        for answer in attempt.answers
+        for question in _question_list(attempt.listening_test)
     ]
     total_questions = sum(
         len(section.questions) for section in attempt.listening_test.sections
