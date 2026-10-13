@@ -68,3 +68,9 @@ def test_writing_weighting_invalid():
 def test_rule_based_evaluator():
     r=RuleBasedWritingEvaluator().evaluate(" ".join(["word"]*250),"prompt")
     assert r.overall_band==5.0 and r.evaluated_by=="system"
+
+
+@pytest.mark.parametrize("question_type", ["multiple_choice", "matching", "form_completion", "sentence_completion", "note_completion", "short_answer", "map_labeling"])
+def test_listening_supported_question_types_use_normalized_scoring(question_type):
+    assert lqs("  NEW   YORK ", "new york|nyc", question_type) == 1
+    assert lqs("", "new york|nyc", question_type) == 0
