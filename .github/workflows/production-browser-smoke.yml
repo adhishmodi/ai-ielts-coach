@@ -1,6 +1,8 @@
 name: Deployed app browser smoke test
 
 on:
+  # Vercel emits deployment_status events; only successful Production deployments run automatically.
+  deployment_status:
   workflow_dispatch:
     inputs:
       base_url:
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
   browser:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production') }}
     name: Smoke-test deployed public pages
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -44,7 +47,7 @@ jobs:
         run: npm run test:e2e
         env:
           CI: "true"
-          PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url || inputs.base_url }}
 
       - name: Upload Playwright diagnostics on failure
         if: failure()
