@@ -28,6 +28,22 @@ async def test_listening_submit_detail(client,db):
     assert len((await client.get(f"/api/v1/listening/attempts/{aid}",headers=h)).json()["answers"])==2
 
 @pytest.mark.asyncio
+async def test_listening_review_includes_unanswered_and_explanation(client,db):
+    test=await seed_listening(db); h=await headers(client)
+    test.sections[0].questions[0].explanation="The speaker clearly names London."
+    await db.commit()
+    s=await client.post(f"/api/v1/listening/tests/{test.id}/start",headers=h); aid=s.json()["attempt_id"]
+    q=str(test.sections[0].questions[0].id)
+    r=await client.post(f"/api/v1/listening/attempts/{aid}/submit",headers=h,json={"answers":[{"question_id":q,"answer":"  LONDON  "}]})
+    assert r.status_code==200 and r.json()["score"]==1
+    detail=(await client.get(f"/api/v1/listening/attempts/{aid}",headers=h)).json()
+    assert len(detail["answers"])==2
+    assert detail["answers"][0]["is_correct"] is True
+    assert detail["answers"][0]["explanation"]=="The speaker clearly names London."
+    assert detail["answers"][1]["user_answer"]==""
+    assert detail["answers"][1]["is_correct"] is False
+
+@pytest.mark.asyncio
 async def test_listening_rejects_empty_duplicate(client,db):
     test=await seed_listening(db); h=await headers(client)
     s=await client.post(f"/api/v1/listening/tests/{test.id}/start",headers=h); aid=s.json()["attempt_id"]; q=str(test.sections[0].questions[0].id)

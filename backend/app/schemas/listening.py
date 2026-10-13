@@ -68,6 +68,8 @@ class ListeningAnswerDetailResponse(BaseModel):
     user_answer: str
     correct_answer: str
     is_correct: bool
+    explanation: str | None = None
+    section_title: str
 
 
 class ListeningAttemptDetailResponse(BaseModel):

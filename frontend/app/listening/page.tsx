@@ -76,7 +76,7 @@ export default function ListeningPage() {
     if (!attempt || busy) return;
     setBusy(true); setError("");
     try {
-      const payload = { answers: Object.entries(answers).map(([question_id, answer]) => ({ question_id, answer })) };
+      const payload = { answers: allQuestions.map((question) => ({ question_id: question.id, answer: answers[question.id] ?? "" })) };
       const submitted = await apiFetch<ListeningSubmissionResponse>(`/listening/attempts/${attempt.attempt_id}/submit`, { method: "POST", body: JSON.stringify(payload) });
       const attemptDetail = await apiFetch<ListeningAttemptDetail>(`/listening/attempts/${attempt.attempt_id}`);
       setResult(submitted); setDetail(attemptDetail); setView("results");
@@ -93,10 +93,10 @@ export default function ListeningPage() {
       {error && <div className="error-box page-message">{error}</div>}
       <section className="test-grid">
         {tests.map((test) => <article className="test-card" key={test.id}>
-          <div className="pill-row"><span className="pill">{test.difficulty}</span><span className="pill">Listening</span></div>
+          <div className="pill-row"><span className="pill">{test.difficulty}</span><span className="pill">Listening practice</span></div>
           <h2>{test.title}</h2><p className="muted">{test.description || "IELTS Listening practice test."}</p>
           <div className="test-meta"><span>{test.sections.length} sections</span><span>{test.sections.reduce((n, s) => n + s.questions.length, 0)} questions</span><span>{test.time_limit_minutes} min</span></div>
-          <button className="primary-button" disabled={busy} onClick={() => startTest(test)}>{busy ? "Starting…" : "Start test"}</button>
+          <button className="primary-button" disabled={busy} onClick={() => startTest(test)}>{busy ? "Starting…" : "Start practice"}</button>
         </article>)}
         {!tests.length && !error && <div className="empty-card">No Listening practice tests are available yet. Please check back soon.</div>}
       </section>
@@ -106,17 +106,18 @@ export default function ListeningPage() {
   if (view === "results" && selectedTest && detail && result) return (
     <main className="app-shell">
       <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Listening results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/")}>Dashboard</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
-      <section className="result-hero"><div><div className="eyebrow">TEST COMPLETE</div><h1>Your Listening review</h1><p className="muted">Review your score and each submitted answer.</p></div><div className="overall-band"><span>Band</span><strong>{result.band_score}</strong><small>{result.score}/{result.total_questions} correct</small></div></section>
+      <section className="result-hero"><div><div className="eyebrow">PRACTICE COMPLETE</div><h1>Your Listening review</h1><p className="muted">Review every answer and explanation. The band is an estimate based on this practice score.</p></div><div className="overall-band"><span>Estimated band</span><strong>{result.band_score}</strong><small>{result.score}/{result.total_questions} correct</small></div></section>
       <section className="review-list">
         {selectedTest.sections.map((s, si) => <article className="result-card" key={s.id}>
-          <div className="review-passage-title"><span className="eyebrow">SECTION {si + 1}</span><h2>{s.title}</h2></div>
+          <div className="review-passage-title"><span className="eyebrow">SECTION {si + 1}</span><h2>{s.title}</h2><span className="muted">{detail.answers.filter((a) => a.section_title === s.title && a.is_correct).length}/{s.questions.length} correct</span></div>
           {s.questions.map((q, i) => {
             const answer = detail.answers.find((a) => a.question_id === q.id);
             return <div className="review-question" key={q.id}>
               <div><strong>Question {i + 1}</strong><span className="question-type">{displayType(q.question_type)}</span></div>
               <p>{q.question_text}</p>
               <div className={answer?.is_correct ? "answer-row correct" : "answer-row incorrect"}><span>Your answer</span><strong>{answer?.user_answer || "Not answered"}</strong></div>
-              {!answer?.is_correct && <div className="answer-row"><span>Correct answer</span><strong>{answer?.correct_answer ?? "—"}</strong></div>}
+              <div className="answer-row"><span>Correct answer</span><strong>{answer?.correct_answer ?? "—"}</strong></div>
+              {answer?.explanation && <div className="prompt-card review-explanation"><strong>Why this is correct</strong><p>{answer.explanation}</p></div>}
             </div>;
           })}
         </article>)}

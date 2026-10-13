@@ -25,6 +25,7 @@ from app.schemas.listening import (
 from app.services.listening import (
     calculate_listening_band,
     calculate_listening_score,
+    is_answer_correct,
     validate_question_type,
 )
 
@@ -183,12 +184,13 @@ async def submit_listening_test(
     attempt.score = score
     attempt.band_score = band_score
 
-    for question_id, answer in submitted_answers.items():
+    # Persist every question, including blanks, so review reflects the full test.
+    for question in questions:
         db.add(
             ListeningAnswer(
                 attempt_id=attempt.id,
-                question_id=UUID(question_id),
-                answer=answer,
+                question_id=question.id,
+                answer=submitted_answers.get(str(question.id), ""),
             )
         )
 
@@ -260,7 +262,8 @@ async def get_listening_attempt(
         )
         .options(
             selectinload(ListeningAttempt.answers)
-            .selectinload(ListeningAnswer.question),
+            .selectinload(ListeningAnswer.question)
+            .selectinload(ListeningQuestion.section),
             selectinload(ListeningAttempt.listening_test)
             .selectinload(ListeningTest.sections)
             .selectinload(ListeningSection.questions),
@@ -277,10 +280,11 @@ async def get_listening_attempt(
             question_type=answer.question.question_type,
             user_answer=answer.answer,
             correct_answer=answer.question.correct_answer,
-            is_correct=(
-                answer.answer.strip().lower()
-                == answer.question.correct_answer.strip().lower()
+            is_correct=is_answer_correct(
+                answer.answer, answer.question.correct_answer
             ),
+            explanation=answer.question.explanation,
+            section_title=answer.question.section.title,
         )
         for answer in attempt.answers
     ]
