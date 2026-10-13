@@ -1,0 +1,58 @@
+name: Deployed app browser smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deployed app URL, e.g. https://your-app.vercel.app"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployed-browser-smoke
+  cancel-in-progress: false
+
+jobs:
+  browser:
+    name: Smoke-test deployed public pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        run: npm install --ignore-scripts
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Test deployed public pages
+        run: npm run test:e2e
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: ${{ inputs.base_url }}
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-playwright-diagnostics
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
