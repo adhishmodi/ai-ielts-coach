@@ -13,44 +13,117 @@ concurrency:
 
 jobs:
   browser:
-    name: Playwright browser tests
+    name: Playwright end-to-end tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
-    defaults:
-      run:
-        working-directory: frontend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ielts_coach_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ielts_coach_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/ielts_coach_e2e
+      JWT_SECRET_KEY: isolated-playwright-only-secret-not-for-production
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      ENV_FILE: .env.test
+      TESTING: "1"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure isolated test environment
+        working-directory: backend
+        shell: bash
+        run: |
+          cat > .env.test <<EOF
+          DATABASE_URL=$DATABASE_URL
+          JWT_SECRET_KEY=$JWT_SECRET_KEY
+          JWT_ALGORITHM=$JWT_ALGORITHM
+          ACCESS_TOKEN_EXPIRE_MINUTES=$ACCESS_TOKEN_EXPIRE_MINUTES
+          REFRESH_TOKEN_EXPIRE_DAYS=$REFRESH_TOKEN_EXPIRE_DAYS
+          EOF
+
+      - name: Apply migrations and seed practice content
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Start API against isolated PostgreSQL
+        working-directory: backend
+        shell: bash
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/ielts-api-e2e.log 2>&1 &
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:8000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/ielts-api-e2e.log
+          exit 1
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm install --ignore-scripts
+        working-directory: frontend
+        run: npm ci --ignore-scripts
 
       - name: Install Playwright Chromium
+        working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Build frontend
+      - name: Build frontend for isolated API
+        working-directory: frontend
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
 
-      - name: Run browser tests
+      - name: Run browser suite
+        working-directory: frontend
         run: npm run test:e2e
         env:
           CI: "true"
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
 
-      - name: Upload Playwright diagnostics on failure
+      - name: Upload browser and API diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-diagnostics
+          name: playwright-e2e-diagnostics
           path: |
             frontend/test-results/
             frontend/playwright-report/
+            /tmp/ielts-api-e2e.log
           if-no-files-found: ignore
           retention-days: 7
