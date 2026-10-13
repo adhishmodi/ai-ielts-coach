@@ -25,6 +25,7 @@ from app.schemas.writing import (
 )
 from app.services.writing import GeminiWritingEvaluator, calculate_writing_overall_band, count_words
 from app.config import settings
+import httpx
 
 router = APIRouter(prefix="/writing", tags=["Writing"])
 
@@ -255,12 +256,16 @@ async def evaluate_writing_submission(
     if submission.attempt.status == "in_progress":
         raise HTTPException(status_code=400, detail="Submit the writing attempt before evaluation")
     if not settings.gemini_api_key:
-        raise HTTPException(status_code=503, detail="AI evaluation is not configured")
+        raise HTTPException(status_code=503, detail="Your submission is saved, but AI evaluation is not configured. Please try again later.")
     evaluator = GeminiWritingEvaluator(settings.gemini_api_key, settings.gemini_model)
     try:
         evaluated = await evaluator.evaluate(submission.response_text, submission.task.prompt, submission.task.task_type)
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"AI evaluation failed: {exc}") from exc
+    except (RuntimeError, ValueError, httpx.HTTPError) as exc:
+        # The submission is already committed; provider failures must not discard the answer.
+        raise HTTPException(
+            status_code=502,
+            detail="Your submission is saved, but AI evaluation is temporarily unavailable. Please try again later.",
+        ) from exc
     evaluation = submission.evaluation
     if evaluation is None:
         evaluation = WritingEvaluation(submission_id=submission.id)

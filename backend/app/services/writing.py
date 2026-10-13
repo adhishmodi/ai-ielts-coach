@@ -1,5 +1,9 @@
+import asyncio
+import json
 import math
 import re
+
+import httpx
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -96,64 +100,107 @@ class DetailedWritingEvaluationResult:
     evaluated_by: str = "ai"
 
 def _extract_json(text: str) -> dict:
-    import json
     cleaned = text.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.IGNORECASE)
-    return json.loads(cleaned)
+    data = json.loads(cleaned)
+    if not isinstance(data, dict):
+        raise ValueError("Evaluation response must be a JSON object")
+    return data
+
+
+def _required_text(data: dict, field: str) -> str:
+    value = data.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Evaluation response field '{field}' must be a non-empty string")
+    return value.strip()
+
+
+def _required_feedback_list(data: dict, field: str) -> list[str]:
+    value = data.get(field)
+    if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+        raise ValueError(f"Evaluation response field '{field}' must be a list of non-empty strings")
+    return [item.strip() for item in value]
 
 class GeminiWritingEvaluator:
+    RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+    MAX_ATTEMPTS = 3
+
     def __init__(self, api_key: str, model: str = "gemini-3.8-flash"):
         self.api_key = api_key
         self.model = model
 
     async def evaluate(self, submission_text: str, task_prompt: str, task_type: str) -> DetailedWritingEvaluationResult:
-        import httpx
         criterion = "Task Achievement" if task_type != "essay" else "Task Response"
         prompt = (
             "You are an IELTS Writing examiner. Evaluate the response using IELTS band descriptors.\n"
             f"Task type: {task_type}\nCriterion: {criterion}\nTask prompt: {task_prompt}\n"
             f"Candidate response:\n{submission_text}\n\n"
             "Return ONLY JSON with task_band, coherence_band, lexical_band, grammar_band, feedback, strengths, improvements. "
-            "Use only half-band scores from 0.0 to 9.0 and do not invent errors."
+            "Use only half-band scores from 0.0 to 9.0 and do not invent errors. "
+            "Every score must be a JSON number. feedback must be a non-empty string. "
+            "strengths and improvements must be arrays of non-empty strings."
         )
         body = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"},
         }
-        # Send the API key in a header, never in the URL where HTTP logs can expose it.
+        # Keep credentials out of the URL and therefore out of URL-based access logs.
         url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
             + self.model
             + ":generateContent"
         )
         headers = {"x-goog-api-key": self.api_key}
+
         async with httpx.AsyncClient(timeout=60.0) as client:
-            payload = None
-            for attempt in range(3):
-                response = await client.post(url, json=body, headers=headers)
-                # Gemini can transiently return 429/5xx under load. Retry briefly.
-                if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
-                    import asyncio
+            response = None
+            for attempt in range(self.MAX_ATTEMPTS):
+                try:
+                    response = await client.post(url, json=body, headers=headers)
+                except (httpx.TimeoutException, httpx.NetworkError):
+                    if attempt + 1 >= self.MAX_ATTEMPTS:
+                        raise RuntimeError("Gemini API request failed after retries") from None
                     await asyncio.sleep(0.5 * (2 ** attempt))
                     continue
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError as exc:
-                    # Do not expose request details or credentials in API error messages.
-                    raise RuntimeError(
-                        f"Gemini API request failed with HTTP {response.status_code}"
-                    ) from exc
-                payload = response.json()
+
+                if response.status_code in self.RETRYABLE_STATUS_CODES and attempt + 1 < self.MAX_ATTEMPTS:
+                    await asyncio.sleep(0.5 * (2 ** attempt))
+                    continue
+                if response.status_code >= 400:
+                    # Avoid forwarding provider bodies, URLs, or credentials to API clients.
+                    raise RuntimeError(f"Gemini API request failed with HTTP {response.status_code}")
                 break
+
         try:
+            payload = response.json()
             text = payload["candidates"][0]["content"]["parts"][0]["text"]
             data = _extract_json(text)
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raw_scores = {
+                field: data[field]
+                for field in ("task_band", "coherence_band", "lexical_band", "grammar_band")
+            }
+            if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in raw_scores.values()):
+                raise ValueError("Evaluation scores must be JSON numbers")
+            task = validate_band(raw_scores["task_band"])
+            coherence = validate_band(raw_scores["coherence_band"])
+            lexical = validate_band(raw_scores["lexical_band"])
+            grammar = validate_band(raw_scores["grammar_band"])
+            feedback = _required_text(data, "feedback")
+            strengths = _required_feedback_list(data, "strengths")
+            improvements = _required_feedback_list(data, "improvements")
+        except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise ValueError("Gemini returned an invalid evaluation response") from exc
-        task = validate_band(data["task_band"])
-        coherence = validate_band(data["coherence_band"])
-        lexical = validate_band(data["lexical_band"])
-        grammar = validate_band(data["grammar_band"])
+
         overall = calculate_task_band(task, coherence, lexical, grammar)
-        return DetailedWritingEvaluationResult(task if task_type == "essay" else None, task if task_type != "essay" else None, coherence, lexical, grammar, overall, str(data["feedback"]), [str(x) for x in data["strengths"]], [str(x) for x in data["improvements"]])
+        return DetailedWritingEvaluationResult(
+            task_response_band=task if task_type == "essay" else None,
+            task_achievement_band=task if task_type != "essay" else None,
+            coherence_band=coherence,
+            lexical_band=lexical,
+            grammar_band=grammar,
+            overall_band=overall,
+            feedback=feedback,
+            strengths=strengths,
+            improvements=improvements,
+        )
