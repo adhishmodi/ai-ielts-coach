@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   apiFetch, clearTokens, ListeningTest, ListeningAttemptStart, ListeningAttemptDetail,
@@ -21,6 +21,12 @@ function displayType(type: string) {
 export default function ListeningPage() {
   const router = useRouter();
   const [view, setView] = useState<View>("select");
+  const [mode, setMode] = useState<"practice" | "exam">("practice");
+  const [audioPlayedSections, setAudioPlayedSections] = useState<Record<string, boolean>>({});
+  const [audioEndedSections, setAudioEndedSections] = useState<Record<string, boolean>>({});
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const submitLock = useRef(false);
   const [tests, setTests] = useState<ListeningTest[]>([]);
   const [selectedTest, setSelectedTest] = useState<ListeningTest | null>(null);
   const [attempt, setAttempt] = useState<ListeningAttemptStart | null>(null);
@@ -37,6 +43,15 @@ export default function ListeningPage() {
   const answered = allQuestions.filter((q) => (answers[q.id] ?? "").trim()).length;
 
   useEffect(() => { void loadTests(); }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setAudioPlaying(false);
+  }, [activeSection, view]);
 
   useEffect(() => {
     if (view !== "test" || !attempt || !selectedTest) return;
@@ -61,19 +76,21 @@ export default function ListeningPage() {
     }
   }
 
-  async function startTest(test: ListeningTest) {
+  async function startTest(test: ListeningTest, selectedMode: "practice" | "exam") {
     setBusy(true); setError("");
     try {
       const started = await apiFetch<ListeningAttemptStart>(`/listening/tests/${test.id}/start`, { method: "POST" });
       setSelectedTest(test); setAttempt(started); setResult(null); setDetail(null);
-      setAnswers({}); setActiveSection(0); setSecondsLeft(test.time_limit_minutes * 60); setView("test");
+      setMode(selectedMode); setAudioPlayedSections({}); setAudioEndedSections({}); setAudioPlaying(false);
+      setAnswers({}); setActiveSection(0); setSecondsLeft(test.time_limit_minutes * 60); submitLock.current = false; setView("test");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start test.");
     } finally { setBusy(false); }
   }
 
   async function submitTest(auto = false) {
-    if (!attempt || busy) return;
+    if (!attempt || busy || submitLock.current) return;
+    submitLock.current = true;
     setBusy(true); setError("");
     try {
       const payload = { answers: allQuestions.map((question) => ({ question_id: question.id, answer: answers[question.id] ?? "" })) };
@@ -82,6 +99,7 @@ export default function ListeningPage() {
       setResult(submitted); setDetail(attemptDetail); setView("results");
       if (auto) setError("Time is up. Your Listening test was submitted.");
     } catch (err) {
+      submitLock.current = false;
       setError(err instanceof Error ? err.message : "Could not submit the test.");
     } finally { setBusy(false); }
   }
@@ -96,7 +114,7 @@ export default function ListeningPage() {
           <div className="pill-row"><span className="pill">{test.difficulty}</span><span className="pill">Listening practice</span></div>
           <h2>{test.title}</h2><p className="muted">{test.description || "IELTS Listening practice test."}</p>
           <div className="test-meta"><span>{test.sections.length} sections</span><span>{test.sections.reduce((n, s) => n + s.questions.length, 0)} questions</span><span>{test.time_limit_minutes} min</span></div>
-          <button className="primary-button" disabled={busy} onClick={() => startTest(test)}>{busy ? "Starting…" : "Start practice"}</button>
+          <div className="listening-mode-actions"><button className="primary-button" disabled={busy} onClick={() => startTest(test, "practice")}>{busy ? "Starting…" : "Practice mode"}</button><button className="secondary-button" disabled={busy} onClick={() => startTest(test, "exam")}>{busy ? "Starting…" : "Exam mode"}</button></div>
         </article>)}
         {!tests.length && !error && <div className="empty-card">No Listening practice tests are available yet. Please check back soon.</div>}
       </section>
@@ -134,8 +152,8 @@ export default function ListeningPage() {
       </header>
       <div className="skill-test-layout">
         <aside className="passage-sidebar">
-          <div className="sidebar-label">Sections</div>
-          {sections.map((s, i) => <button key={s.id} className={i === activeSection ? "task-tab active" : "task-tab"} onClick={() => setActiveSection(i)}>
+          <div className="sidebar-label">{mode === "exam" ? "Exam sections" : "Practice sections"}</div>
+          {sections.map((s, i) => <button key={s.id} disabled={mode === "exam" && !!audioPlayedSections[s.id] && !audioEndedSections[s.id] && i !== activeSection} className={i === activeSection ? "task-tab active" : "task-tab"} onClick={() => setActiveSection(i)}>
             <span>Section {i + 1}</span><small>{s.questions.length} questions</small>
           </button>)}
           <div className="progress-box"><strong>{answered}/{allQuestions.length}</strong><span>answered</span></div>
@@ -148,11 +166,13 @@ export default function ListeningPage() {
                 <div>
                   <span className="eyebrow">LISTENING AUDIO</span>
                   <strong>Section {activeSection + 1} recording</strong>
-                  <span className="muted">Listen carefully before answering. You can replay the recording when practising.</span>
+                  <span className="muted">{mode === "exam" ? "Exam mode: one play-through per section. Pausing and resuming is allowed, but replay is disabled after the recording ends." : "Practice mode: play, pause, and replay the recording as often as you need."}</span>
                 </div>
-                <audio className="listening-audio" controls preload="metadata" src={section.audio_url}>
-                  Your browser does not support audio playback.
-                </audio>
+                <div className="listening-player-controls">
+                  <audio ref={audioRef} className="listening-audio" preload="metadata" src={section.audio_url} onPlay={() => { setAudioPlaying(true); setAudioPlayedSections((current) => ({ ...current, [section.id]: true })); }} onPause={() => setAudioPlaying(false)} onEnded={() => { setAudioPlaying(false); setAudioEndedSections((current) => ({ ...current, [section.id]: true })); }} onError={() => { setAudioPlaying(false); setAudioPlayedSections((current) => ({ ...current, [section.id]: false })); setError("Audio could not be loaded. Check your connection and try again."); }} />
+                  <button className="primary-button" disabled={mode === "exam" && !!audioEndedSections[section.id]} onClick={() => { const audio = audioRef.current; if (!audio) return; if (audio.paused) { if (mode === "exam" && audioEndedSections[section.id]) return; if (mode === "practice" && audioEndedSections[section.id]) { audio.currentTime = 0; setAudioEndedSections((current) => ({ ...current, [section.id]: false })); } void audio.play().catch(() => setError("Audio playback failed. Please check your connection and try again.")); } else audio.pause(); }}>{audioPlaying ? "Pause audio" : audioEndedSections[section.id] ? "Recording finished" : audioPlayedSections[section.id] ? "Resume audio" : "Play audio"}</button>
+                  {mode === "exam" && audioEndedSections[section.id] && <span className="muted">This recording has ended and cannot be replayed in exam mode.</span>}
+                </div>
               </div>
             ) : (
               <div className="listening-notice"><strong>Audio not configured</strong><span>This section does not have an audio asset yet. Add an audio URL to the section content to enable playback.</span></div>
