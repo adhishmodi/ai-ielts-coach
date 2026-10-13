@@ -45,6 +45,15 @@ export default function ListeningPage() {
   useEffect(() => { void loadTests(); }, []);
 
   useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setAudioPlaying(false);
+  }, [activeSection, view]);
+
+  useEffect(() => {
     if (view !== "test" || !attempt || !selectedTest) return;
     const timer = window.setInterval(() => {
       const end = new Date(attempt.started_at).getTime() + selectedTest.time_limit_minutes * 60000;
@@ -161,7 +170,7 @@ export default function ListeningPage() {
                 </div>
                 <div className="listening-player-controls">
                   <audio ref={audioRef} className="listening-audio" preload="metadata" src={section.audio_url} onPlay={() => { setAudioPlaying(true); setAudioPlayedSections((current) => ({ ...current, [section.id]: true })); }} onPause={() => setAudioPlaying(false)} onEnded={() => { setAudioPlaying(false); setAudioEndedSections((current) => ({ ...current, [section.id]: true })); }} />
-                  <button className="primary-button" disabled={mode === "exam" && !!audioEndedSections[section.id]} onClick={() => { const audio = audioRef.current; if (!audio) return; if (audio.paused) { if (mode === "exam" && audioEndedSections[section.id]) return; void audio.play().catch(() => setError("Audio playback failed. Please check your connection and try again.")); } else audio.pause(); }}>{audioPlaying ? "Pause audio" : audioEndedSections[section.id] ? "Recording finished" : audioPlayedSections[section.id] ? "Resume audio" : "Play audio"}</button>
+                  <button className="primary-button" disabled={mode === "exam" && !!audioEndedSections[section.id]} onClick={() => { const audio = audioRef.current; if (!audio) return; if (audio.paused) { if (mode === "exam" && audioEndedSections[section.id]) return; if (mode === "practice" && audioEndedSections[section.id]) { audio.currentTime = 0; setAudioEndedSections((current) => ({ ...current, [section.id]: false })); } void audio.play().catch(() => setError("Audio playback failed. Please check your connection and try again.")); } else audio.pause(); }}>{audioPlaying ? "Pause audio" : audioEndedSections[section.id] ? "Recording finished" : audioPlayedSections[section.id] ? "Resume audio" : "Play audio"}</button>
                   {mode === "exam" && audioEndedSections[section.id] && <span className="muted">This recording has ended and cannot be replayed in exam mode.</span>}
                 </div>
               </div>
