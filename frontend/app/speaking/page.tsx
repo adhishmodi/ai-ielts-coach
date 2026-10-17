@@ -105,17 +105,21 @@ export default function SpeakingPage() {
   }, [activePart, view]);
 
   useEffect(() => {
-    if (view !== "test" || !activePart) return;
-    if (secondsLeft <= 0) {
-      if (phase === "preparation") {
-        beginSpeaking();
-      } else {
-        void finishPart();
-      }
-      return;
-    }
+    // Wait until the part-initialization effect has set its countdown. On the
+    // first render secondsLeft is 0; transitioning here would skip preparation.
+    if (view !== "test" || !activePart || secondsLeft <= 0) return;
 
-    const timer = window.setTimeout(() => setSecondsLeft((value) => Math.max(0, value - 1)), 1000);
+    const timer = window.setTimeout(() => {
+      if (secondsLeft <= 1) {
+        if (phase === "preparation") {
+          beginSpeaking();
+        } else {
+          void finishPart();
+        }
+      } else {
+        setSecondsLeft((value) => Math.max(0, value - 1));
+      }
+    }, 1000);
     return () => window.clearTimeout(timer);
   }, [view, activePart, phase, secondsLeft]);
 
