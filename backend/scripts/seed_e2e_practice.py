@@ -54,7 +54,7 @@ async def main() -> None:
                     title="Part 1",
                     instructions="Answer the introductory question.",
                     prompt="Tell me about a skill you enjoy learning.",
-                    preparation_seconds=0,
+                    preparation_seconds=30,
                     response_seconds=120,
                     order=1,
                 ),
