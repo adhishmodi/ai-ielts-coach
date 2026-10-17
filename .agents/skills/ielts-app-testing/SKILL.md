@@ -81,7 +81,7 @@ Run these only in the correct repository context and with environment variables 
 - Browser E2E: `cd frontend && npm run test:e2e`
 - Install Chromium if needed: `cd frontend && npx playwright install --with-deps chromium`
 
-The exact CI environment setup is in the workflows. Do not copy production environment variables into local or test configuration. The browser workflow builds the frontend with `NEXT_PUBLIC_API_URL` pointed at the isolated API and seeds deterministic E2E practice content before running the suite.
+The exact CI environment setup is in the workflows. Do not copy production environment variables into local or test configuration. The browser workflow builds the frontend with `NEXT_PUBLIC_API_URL` pointed at the isolated API and seeds deterministic E2E practice content before running the suite. The isolated browser workflow explicitly sets `PLAYWRIGHT_BASE_URL` to an empty value so a deployment URL cannot switch the suite into public-page-only mode and skip state-mutating tests.
 
 ## Failure investigation workflow
 
