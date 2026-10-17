@@ -49,10 +49,17 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
 
     const editor = page.getByPlaceholder("Start writing here…");
     await expect(editor).toBeVisible();
-    await editor.fill(
-      "The chart compares changes over time. Overall, the main trend is clear, although the categories differ in their rate of change.",
+    const draft =
+      "The chart compares changes over time. Overall, the main trend is clear, although the categories differ in their rate of change.";
+    const saveResponse = page.waitForResponse((response) =>
+      response.request().method() === "PUT" &&
+      /\/writing\/attempts\/[^/]+\/tasks\/[^/]+$/.test(response.url()) &&
+      response.status() === 200,
     );
-    await expect(page.locator(".save-status")).toContainText(/Saved|Saving/, { timeout: 10_000 });
+    await editor.fill(draft);
+    const saved = await saveResponse;
+    expect((await saved.json()).word_count).toBe(22);
+    await expect(page.locator(".save-status")).toContainText(/^Saved\b/, { timeout: 10_000 });
     await expect(page.locator(".word-count")).toContainText(/\d+ words/);
   });
 
