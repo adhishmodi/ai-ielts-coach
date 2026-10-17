@@ -29,7 +29,11 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await testCard.getByRole("button", { name: "Start test" }).click();
 
     await expect(page.getByRole("heading", { name: /Passage 1|Reading/i }).first()).toBeVisible();
+    // The API rejects empty submissions, so answer the deterministic seeded question first.
+    await page.getByPlaceholder("Type your answer").fill("1998");
+    await expect(page.getByPlaceholder("Type your answer")).toHaveValue("1998");
     await page.getByRole("button", { name: "Submit test" }).click();
+    await expect(page.locator(".floating-error")).toBeHidden({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/correct$/).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
@@ -61,6 +65,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await testCard.getByRole("button", { name: "Start speaking test" }).click();
 
     await expect(page.getByRole("heading", { name: /Part 1/i })).toBeVisible({ timeout: 15_000 });
+    // The seeded Part 1 includes a preparation window, making this action deterministic.
     await page.getByRole("button", { name: "Start speaking now" }).click();
 
     const transcript = page.getByPlaceholder(
