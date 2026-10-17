@@ -114,6 +114,9 @@ jobs:
         run: npm run test:e2e
         env:
           CI: "true"
+          # Explicitly prevent an inherited deployment URL from switching Playwright
+          # to public-page-only mode and skipping state-mutating E2E coverage.
+          PLAYWRIGHT_BASE_URL: ""
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
 
       - name: Upload browser and API diagnostics on failure
