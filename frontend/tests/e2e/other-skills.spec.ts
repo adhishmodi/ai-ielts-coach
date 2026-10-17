@@ -60,13 +60,18 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await createAccountThroughUi(page);
     await page.goto("/speaking");
 
-    const testCard = page.locator(".test-card").first();
+    // Select the deterministic fixture explicitly; other tests may be listed first by creation date.
+    const testCard = page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
+    });
     await expect(testCard).toBeVisible({ timeout: 15_000 });
     await testCard.getByRole("button", { name: "Start speaking test" }).click();
 
     await expect(page.getByRole("heading", { name: /Part 1/i })).toBeVisible({ timeout: 15_000 });
-    // The seeded Part 1 includes a preparation window, making this action deterministic.
-    await page.getByRole("button", { name: "Start speaking now" }).click();
+    // Assert the expected preparation phase before clicking, so a fixture mismatch fails clearly.
+    const startSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
+    await expect(startSpeakingButton).toBeVisible({ timeout: 5_000 });
+    await startSpeakingButton.click();
 
     const transcript = page.getByPlaceholder(
       "Your transcript will appear here. You can edit it if needed…",
