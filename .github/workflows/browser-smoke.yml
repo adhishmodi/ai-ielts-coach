@@ -72,7 +72,9 @@ jobs:
 
       - name: Apply migrations and seed practice content
         working-directory: backend
-        run: alembic upgrade head
+        run: |
+          alembic upgrade head
+          python scripts/seed_e2e_practice.py
 
       - name: Start API against isolated PostgreSQL
         working-directory: backend
