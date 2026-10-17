@@ -187,14 +187,22 @@ export default function ListeningPage() {
   );
 }
 
-function optionLabel(option: unknown): string {
-  if (typeof option === "string" || typeof option === "number") return String(option);
+function optionDetails(option: unknown): { label: string; value: string } {
+  if (typeof option === "string" || typeof option === "number") {
+    const text = String(option);
+    return { label: text, value: text };
+  }
   if (option && typeof option === "object") {
     const item = option as Record<string, unknown>;
-    const label = item.label ?? item.text ?? item.name ?? item.value;
-    if (typeof label === "string" || typeof label === "number") return String(label);
+    const rawValue = item.value ?? item.id ?? item.key ?? item.label ?? item.text ?? item.name;
+    const rawLabel = item.label ?? item.text ?? item.name ?? rawValue;
+    if ((typeof rawLabel === "string" || typeof rawLabel === "number") &&
+        (typeof rawValue === "string" || typeof rawValue === "number")) {
+      return { label: String(rawLabel), value: String(rawValue) };
+    }
   }
-  return String(option);
+  const text = String(option);
+  return { label: text, value: text };
 }
 
 function Question({ number, question, value, onChange }: {
@@ -205,23 +213,23 @@ function Question({ number, question, value, onChange }: {
 }) {
   const options = Array.isArray(question.options) ? question.options : [];
   const type = question.question_type;
-  const labels = options.map(optionLabel);
+  const choices = options.map(optionDetails);
   const answerLabel = `Answer for question ${number}`;
 
   return <article className="question-card" data-question-type={type}>
     <div className="question-card-head"><strong>Question {number}</strong><span className="question-type">{displayType(type)}</span></div>
     <p>{question.question_text}</p>
-    {type === "multiple_choice" && labels.length > 0 ? (
+    {type === "multiple_choice" && choices.length > 0 ? (
       <div className="option-list" role="group" aria-label={answerLabel}>
-        {labels.map((text, i) => <label className={value === text ? "option selected" : "option"} key={i}>
-          <input type="radio" name={question.id} value={text} checked={value === text} onChange={(e) => onChange(e.target.value)} />
-          <span>{text}</span>
+        {choices.map((choice, i) => <label className={value === choice.value ? "option selected" : "option"} key={i}>
+          <input type="radio" name={question.id} value={choice.value} checked={value === choice.value} onChange={(e) => onChange(e.target.value)} />
+          <span>{choice.label}</span>
         </label>)}
       </div>
-    ) : (type === "matching" || type === "map_labeling") && labels.length > 0 ? (
+    ) : (type === "matching" || type === "map_labeling") && choices.length > 0 ? (
       <select className="answer-input" aria-label={answerLabel} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">Choose an option</option>
-        {labels.map((text, i) => <option value={text} key={i}>{text}</option>)}
+        {choices.map((choice, i) => <option value={choice.value} key={i}>{choice.label}</option>)}
       </select>
     ) : (
       <input
