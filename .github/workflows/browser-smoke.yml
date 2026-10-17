@@ -74,7 +74,7 @@ jobs:
         working-directory: backend
         run: |
           alembic upgrade head
-          python scripts/seed_e2e_practice.py
+          PYTHONPATH=. python scripts/seed_e2e_practice.py
 
       - name: Start API against isolated PostgreSQL
         working-directory: backend
