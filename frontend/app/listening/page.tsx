@@ -187,6 +187,16 @@ export default function ListeningPage() {
   );
 }
 
+function optionLabel(option: unknown): string {
+  if (typeof option === "string" || typeof option === "number") return String(option);
+  if (option && typeof option === "object") {
+    const item = option as Record<string, unknown>;
+    const label = item.label ?? item.text ?? item.name ?? item.value;
+    if (typeof label === "string" || typeof label === "number") return String(label);
+  }
+  return String(option);
+}
+
 function Question({ number, question, value, onChange }: {
   number: number;
   question: ListeningTest["sections"][number]["questions"][number];
@@ -194,12 +204,34 @@ function Question({ number, question, value, onChange }: {
   onChange: (value: string) => void;
 }) {
   const options = Array.isArray(question.options) ? question.options : [];
-  return <article className="question-card">
-    <div className="question-card-head"><strong>Question {number}</strong><span className="question-type">{displayType(question.question_type)}</span></div>
+  const type = question.question_type;
+  const labels = options.map(optionLabel);
+  const answerLabel = `Answer for question ${number}`;
+
+  return <article className="question-card" data-question-type={type}>
+    <div className="question-card-head"><strong>Question {number}</strong><span className="question-type">{displayType(type)}</span></div>
     <p>{question.question_text}</p>
-    {options.length ? <div className="option-list">{options.map((option, i) => {
-      const text = String(option);
-      return <label className={value === text ? "option selected" : "option"} key={i}><input type="radio" name={question.id} value={text} checked={value === text} onChange={(e) => onChange(e.target.value)} /><span>{text}</span></label>;
-    })}</div> : <input className="answer-input" value={value} onChange={(e) => onChange(e.target.value)} placeholder="Type your answer" />}
+    {type === "multiple_choice" && labels.length > 0 ? (
+      <div className="option-list" role="group" aria-label={answerLabel}>
+        {labels.map((text, i) => <label className={value === text ? "option selected" : "option"} key={i}>
+          <input type="radio" name={question.id} value={text} checked={value === text} onChange={(e) => onChange(e.target.value)} />
+          <span>{text}</span>
+        </label>)}
+      </div>
+    ) : (type === "matching" || type === "map_labeling") && labels.length > 0 ? (
+      <select className="answer-input" aria-label={answerLabel} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Choose an option</option>
+        {labels.map((text, i) => <option value={text} key={i}>{text}</option>)}
+      </select>
+    ) : (
+      <input
+        className="answer-input"
+        type="text"
+        aria-label={answerLabel}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={type === "form_completion" ? "Enter the missing detail" : type === "note_completion" ? "Complete the note" : type === "sentence_completion" ? "Complete the sentence" : type === "short_answer" ? "Type a short answer" : type === "map_labeling" ? "Enter the place or label" : type === "matching" ? "Enter your match" : "Type your answer"}
+      />
+    )}
   </article>;
 }
