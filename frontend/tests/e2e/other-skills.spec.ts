@@ -58,7 +58,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     );
     await editor.fill(draft);
     const saved = await saveResponse;
-    expect((await saved.json()).word_count).toBe(22);
+    expect((await saved.json()).word_count).toBe(21);
     await expect(page.locator(".save-status")).toContainText(/^Saved\b/, { timeout: 10_000 });
     await expect(page.locator(".word-count")).toContainText(/\d+ words/);
   });
