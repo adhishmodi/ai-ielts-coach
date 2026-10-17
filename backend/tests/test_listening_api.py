@@ -56,3 +56,79 @@ async def test_listening_not_found(client):
     import uuid
     h=await headers(client)
     assert (await client.get(f"/api/v1/listening/tests/{uuid.uuid4()}",headers=h)).status_code==404
+
+@pytest.mark.asyncio
+async def test_listening_all_supported_question_types_submit_and_score(client, db):
+    from app.models.listening_test import ListeningTest
+    from app.models.listening_section import ListeningSection
+    from app.models.listening_question import ListeningQuestion
+
+    question_types = [
+        "multiple_choice",
+        "matching",
+        "form_completion",
+        "sentence_completion",
+        "note_completion",
+        "short_answer",
+        "map_labeling",
+    ]
+    test = ListeningTest(
+        title="All Question Types",
+        description="Isolated API regression test",
+        difficulty="medium",
+        time_limit_minutes=40,
+    )
+    section = ListeningSection(
+        title="Question types",
+        instructions="Answer all questions.",
+        audio_url=None,
+        order=1,
+    )
+    section.questions = [
+        ListeningQuestion(
+            question_text=f"Question for {question_type}",
+            question_type=question_type,
+            correct_answer="New York|NYC",
+            explanation="The accepted answer is New York.",
+            order=index,
+            options=["New York", "Boston"] if question_type == "multiple_choice" else (
+                ["New York", "Boston"] if question_type in {"matching", "map_labeling"} else None
+            ),
+        )
+        for index, question_type in enumerate(question_types, start=1)
+    ]
+    test.sections = [section]
+    db.add(test)
+    await db.commit()
+
+    auth = await headers(client)
+    started = await client.post(
+        f"/api/v1/listening/tests/{test.id}/start", headers=auth
+    )
+    assert started.status_code == 200, started.text
+    attempt_id = started.json()["attempt_id"]
+
+    question_ids = [str(question.id) for question in test.sections[0].questions]
+    submitted = await client.post(
+        f"/api/v1/listening/attempts/{attempt_id}/submit",
+        headers=auth,
+        json={
+            "answers": [
+                {"question_id": question_id, "answer": "  NEW   YORK "}
+                for question_id in question_ids
+            ]
+        },
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["score"] == len(question_types)
+    assert submitted.json()["total_questions"] == len(question_types)
+
+    detail = await client.get(
+        f"/api/v1/listening/attempts/{attempt_id}", headers=auth
+    )
+    assert detail.status_code == 200, detail.text
+    assert {answer["question_type"] for answer in detail.json()["answers"]} == set(
+        question_types
+    )
+    assert all(answer["is_correct"] for answer in detail.json()["answers"])
+
