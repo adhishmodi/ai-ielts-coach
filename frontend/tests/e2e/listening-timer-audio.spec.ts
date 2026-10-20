@@ -90,7 +90,7 @@ test("Listening automatically submits once when the timer has expired", async ({
   await startFixture(page);
 
   await expect(page.getByRole("heading", { name: "Your Listening review" })).toBeVisible({ timeout: 8_000 });
-  await expect(page.getByText("0/1 correct")).toBeVisible();
+  await expect(page.getByText("0/1 correct").first()).toBeVisible();
   expect(fixture.getSubmissionCount()).toBe(1);
 });
 
