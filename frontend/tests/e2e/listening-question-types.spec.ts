@@ -1,5 +1,50 @@
 import { expect, test } from "@playwright/test";
 
+test("Listening shows a loading state while tests are being fetched", async ({ page }) => {
+  let releaseResponse!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+
+  await page.route("**/api/v1/listening/tests", async (route) => {
+    await responseGate;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([{
+        id: "delayed-listening-test",
+        title: "Delayed Listening Test",
+        description: "Loading-state regression test",
+        difficulty: "easy",
+        time_limit_minutes: 40,
+        sections: [],
+      }]),
+    });
+  });
+
+  await page.goto("/listening");
+  await expect(page.getByRole("status")).toHaveText("Loading Listening practice tests…");
+  await expect(page.getByText("No Listening practice tests are available yet. Please check back soon.")).toHaveCount(0);
+
+  releaseResponse();
+  await expect(page.getByRole("heading", { name: "Delayed Listening Test" })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveCount(0);
+});
+
+test("Listening shows the empty state only after a successful empty response", async ({ page }) => {
+  await page.route("**/api/v1/listening/tests", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([]),
+    });
+  });
+
+  await page.goto("/listening");
+  await expect(page.getByText("No Listening practice tests are available yet. Please check back soon.")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveCount(0);
+});
+
 test("Listening renders all seven supported question types with appropriate answer controls", async ({ page }) => {
   const questions = [
     { id: "q-mcq", question_text: "Which drink was ordered?", question_type: "multiple_choice", options: ["Tea", "Coffee"], order: 1 },
