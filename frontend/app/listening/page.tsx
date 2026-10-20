@@ -28,6 +28,7 @@ export default function ListeningPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const submitLock = useRef(false);
   const [tests, setTests] = useState<ListeningTest[]>([]);
+  const [loadingTests, setLoadingTests] = useState(true);
   const [selectedTest, setSelectedTest] = useState<ListeningTest | null>(null);
   const [attempt, setAttempt] = useState<ListeningAttemptStart | null>(null);
   const [result, setResult] = useState<ListeningSubmissionResponse | null>(null);
@@ -68,11 +69,15 @@ export default function ListeningPage() {
   }, [view, attempt, selectedTest]);
 
   async function loadTests() {
+    setLoadingTests(true);
     try {
-      setError(""); setTests(await apiFetch<ListeningTest[]>("/listening/tests"));
+      setError("");
+      setTests(await apiFetch<ListeningTest[]>("/listening/tests"));
     } catch (err) {
       if (String(err).includes("401")) { clearTokens(); router.replace("/login"); }
       else setError(err instanceof Error ? err.message : "Could not load Listening tests.");
+    } finally {
+      setLoadingTests(false);
     }
   }
 
@@ -116,7 +121,8 @@ export default function ListeningPage() {
           <div className="test-meta"><span>{test.sections.length} sections</span><span>{test.sections.reduce((n, s) => n + s.questions.length, 0)} questions</span><span>{test.time_limit_minutes} min</span></div>
           <div className="listening-mode-actions"><button className="primary-button" disabled={busy} onClick={() => startTest(test, "practice")}>{busy ? "Starting…" : "Practice mode"}</button><button className="secondary-button" disabled={busy} onClick={() => startTest(test, "exam")}>{busy ? "Starting…" : "Exam mode"}</button></div>
         </article>)}
-        {!tests.length && !error && <div className="empty-card">No Listening practice tests are available yet. Please check back soon.</div>}
+        {loadingTests && <div className="empty-card" role="status">Loading Listening practice tests…</div>}
+        {!loadingTests && !tests.length && !error && <div className="empty-card">No Listening practice tests are available yet. Please check back soon.</div>}
       </section>
     </main>
   );
