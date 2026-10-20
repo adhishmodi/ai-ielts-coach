@@ -134,8 +134,20 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     expect(evaluationCalls).toBe(2);
   });
 
-  test("Speaking saves a manually entered transcript and advances to Part 2", async ({ page }) => {
+  test("Speaking completes all three parts and displays deterministic evaluation results", async ({ page }) => {
     await createAccountThroughUi(page);
+
+    // Keep this journey independent of physical microphones and speech-recognition support.
+    await page.addInitScript(() => {
+      if (navigator.mediaDevices?.getUserMedia) {
+        Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+          configurable: true,
+          value: async () => {
+            throw new Error("Microphone intentionally unavailable in this deterministic E2E test.");
+          },
+        });
+      }
+    });
     await page.goto("/speaking");
 
     // Select the deterministic fixture explicitly; other tests may be listed first by creation date.
@@ -145,22 +157,93 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(testCard).toBeVisible({ timeout: 15_000 });
     await testCard.getByRole("button", { name: "Start speaking test" }).click();
 
-    await expect(page.getByRole("heading", { name: /Part 1/i })).toBeVisible({ timeout: 15_000 });
-    // Assert the expected preparation phase before clicking, so a fixture mismatch fails clearly.
-    const startSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
-    await expect(startSpeakingButton).toBeVisible({ timeout: 5_000 });
-    await startSpeakingButton.click();
+    // Only evaluation is mocked. Starting, saving, submitting, and reading the attempt
+    // continue through the isolated CI API and PostgreSQL database.
+    let evaluationCalls = 0;
+    await page.route("**/speaking/responses/*/evaluate", async (route) => {
+      evaluationCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          response_id: "e2e-speaking-response-" + evaluationCalls,
+          status: "evaluated",
+          evaluation: {
+            id: "e2e-speaking-evaluation-" + evaluationCalls,
+            response_id: "e2e-speaking-response-" + evaluationCalls,
+            fluency_band: 7,
+            lexical_band: 7,
+            grammar_band: 6.5,
+            pronunciation_band: 6.5,
+            overall_band: 7,
+            feedback: "Deterministic Speaking evaluation feedback.",
+            strengths: ["Ideas are clearly organised"],
+            improvements: ["Add more specific examples"],
+            evaluated_by: "e2e-mock",
+            evaluated_at: "2026-01-01T00:00:00Z",
+          },
+        }),
+      });
+    });
 
-    const transcript = page.getByPlaceholder(
-      "Your transcript will appear here. You can edit it if needed…",
-    );
-    await expect(transcript).toBeVisible();
-    await transcript.fill(
-      "I enjoy learning new skills because they help me solve problems. For example, I practise English regularly to prepare for my studies abroad.",
-    );
-    await page.getByRole("button", { name: "Save & continue" }).click();
+    const transcriptTexts = [
+      "I enjoy learning new skills because they help me solve problems. I practise English regularly to prepare for my studies abroad.",
+      "I would like to learn photography because it combines creativity with technology. I would practise on weekends and learn from experienced photographers.",
+      "Lifelong learning is important because technology and workplaces change quickly. Learning new skills helps people adapt and gives them more opportunities.",
+    ];
 
-    await expect(page.getByRole("heading", { name: /Part 2/i })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Response saved.")).toBeVisible();
+    for (const partNumber of [1, 2, 3]) {
+      await expect(page.getByRole("heading", { name: new RegExp("Part " + partNumber) })).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // Parts 1 and 2 have a preparation screen; skip the countdown using the UI control.
+      const startSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
+      if (await startSpeakingButton.isVisible().catch(() => false)) {
+        await startSpeakingButton.click();
+      }
+
+      const transcript = page.getByPlaceholder(
+        "Your transcript will appear here. You can edit it if needed…",
+      );
+      await expect(transcript).toBeVisible({ timeout: 10_000 });
+      await transcript.fill(transcriptTexts[partNumber - 1]);
+      await expect(transcript).toHaveValue(transcriptTexts[partNumber - 1]);
+
+      const saveResponse = page.waitForResponse((response) =>
+        response.request().method() === "PUT" &&
+        /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
+        response.status() === 200,
+      );
+      const continueButton = page.getByRole("button", {
+        name: partNumber === 3 ? "Finish test" : "Save & continue",
+      });
+      await continueButton.click();
+      const saved = await saveResponse;
+      expect((await saved.json()).transcript).toBe(transcriptTexts[partNumber - 1]);
+
+      if (partNumber < 3) {
+        await expect(page.getByRole("heading", { name: new RegExp("Part " + (partNumber + 1)) })).toBeVisible({
+          timeout: 15_000,
+        });
+      }
+    }
+
+    await expect(page.getByRole("heading", { name: "Your Speaking review" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator(".result-card")).toHaveCount(3);
+    await expect(page.locator(".result-card .score")).toHaveText(["7", "7", "7"]);
+    await expect(page.getByText("Deterministic Speaking evaluation feedback.")).toHaveCount(3);
+    await expect(page.getByText("Ideas are clearly organised").first()).toBeVisible();
+    await expect(page.getByText("Add more specific examples").first()).toBeVisible();
+    expect(evaluationCalls).toBe(3);
+
+    // Open each saved transcript in the final review, proving all three parts persisted.
+    for (let index = 0; index < transcriptTexts.length; index += 1) {
+      const transcriptDetails = page.locator(".transcript-details").nth(index);
+      await transcriptDetails.locator("summary").click();
+      await expect(transcriptDetails).toContainText(transcriptTexts[index]);
+    }
   });
 });
