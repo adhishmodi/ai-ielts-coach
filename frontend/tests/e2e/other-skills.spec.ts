@@ -63,6 +63,77 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(page.locator(".word-count")).toContainText(/\d+ words/);
   });
 
+
+  test("Writing submits both tasks and displays deterministic evaluation feedback", async ({ page }) => {
+    await createAccountThroughUi(page);
+    await page.goto("/writing");
+
+    const testCard = page.locator(".test-card").first();
+    await expect(testCard).toBeVisible({ timeout: 15_000 });
+    await testCard.getByRole("button", { name: "Start test" }).click();
+
+    // Mock only the evaluation provider endpoint. Attempt creation, draft saves,
+    // submission, and persisted attempt details still use the isolated CI API/database.
+    let evaluationCalls = 0;
+    await page.route("**/writing/submissions/*/evaluate", async (route) => {
+      evaluationCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          submission_id: "e2e-submission-" + evaluationCalls,
+          status: "evaluated",
+          evaluation: {
+            id: "e2e-evaluation-" + evaluationCalls,
+            task_response_band: 7,
+            task_achievement_band: 7,
+            coherence_band: 6.5,
+            lexical_band: 7,
+            grammar_band: 6.5,
+            overall_band: 7,
+            feedback: "Deterministic E2E evaluation feedback.",
+            strengths: ["Clear main ideas"],
+            improvements: ["Develop supporting examples"],
+            evaluated_by: "e2e-mock",
+            evaluated_at: "2026-01-01T00:00:00Z",
+          },
+        }),
+      });
+    });
+
+    for (const taskNumber of [1, 2]) {
+      const taskTab = page.getByRole("button", { name: new RegExp("Task " + taskNumber + "\\b") });
+      await taskTab.click();
+      const targetText = await page.locator(".word-target").innerText();
+      const minimumWords = Number(targetText.match(/\d+/)?.[0]);
+      expect(minimumWords).toBeGreaterThan(0);
+
+      const editor = page.getByPlaceholder("Start writing here…");
+      const responseText = Array.from(
+        { length: minimumWords + 5 },
+        (_, index) => "word" + (index + 1),
+      ).join(" ");
+      const saveResponse = page.waitForResponse((response) =>
+        response.request().method() === "PUT" &&
+        /\/writing\/attempts\/[^/]+\/tasks\/[^/]+$/.test(response.url()) &&
+        response.status() === 200,
+      );
+      await editor.fill(responseText);
+      const saved = await saveResponse;
+      expect((await saved.json()).word_count).toBe(minimumWords + 5);
+      await expect(page.locator(".save-status")).toContainText(/^Saved\b/, { timeout: 10_000 });
+    }
+
+    await page.getByRole("button", { name: "Submit test" }).click();
+    await expect(page.getByRole("heading", { name: "Your Writing review" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Both tasks were submitted successfully.")).toBeVisible();
+    await expect(page.getByText("Deterministic E2E evaluation feedback.").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Clear main ideas").first()).toBeVisible();
+    await expect(page.getByText("Develop supporting examples").first()).toBeVisible();
+    await expect(page.locator(".score").filter({ hasText: "7" })).toHaveCount(2);
+    expect(evaluationCalls).toBe(2);
+  });
+
   test("Speaking saves a manually entered transcript and advances to Part 2", async ({ page }) => {
     await createAccountThroughUi(page);
     await page.goto("/speaking");
