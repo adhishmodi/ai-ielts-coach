@@ -34,6 +34,21 @@ async def main() -> None:
                             explanation="The passage states that it opened in 1998.",
                             order=1,
                         ),
+                        ReadingQuestion(
+                            question_text="Which facility opened in 1998?",
+                            question_type="multiple_choice",
+                            options=["Central Library", "Community Hall", "Sports Centre"],
+                            correct_answer="Central Library",
+                            explanation="The passage identifies the city library as opening in 1998.",
+                            order=2,
+                        ),
+                        ReadingQuestion(
+                            question_text="The library welcomes visitors every weekday.",
+                            question_type="true_false",
+                            correct_answer="True",
+                            explanation="The passage says it welcomes visitors every weekday.",
+                            order=3,
+                        ),
                     ],
                 ),
             ]
