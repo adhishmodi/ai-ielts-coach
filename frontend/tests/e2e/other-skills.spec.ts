@@ -20,22 +20,38 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     "These workflows create attempts and drafts; run only against the isolated PostgreSQL service in GitHub Actions.",
   );
 
-  test("Reading can start a test and submit to the answer review", async ({ page }) => {
+  test("Reading supports short-answer, multiple-choice, and true/false answers through review", async ({ page }) => {
     await createAccountThroughUi(page);
     await page.goto("/reading");
 
-    const testCard = page.locator(".test-card").first();
+    const testCard = page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Reading Test", exact: true }),
+    });
     await expect(testCard).toBeVisible({ timeout: 15_000 });
     await testCard.getByRole("button", { name: "Start test" }).click();
 
-    await expect(page.getByRole("heading", { name: /Passage 1|Reading/i }).first()).toBeVisible();
-    // The API rejects empty submissions, so answer the deterministic seeded question first.
-    await page.getByPlaceholder("Type your answer").fill("1998");
-    await expect(page.getByPlaceholder("Type your answer")).toHaveValue("1998");
+    await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
+    const textAnswers = page.getByPlaceholder("Type your answer");
+    await textAnswers.nth(0).fill("1998");
+    await page.getByLabel("Central Library").check();
+    await textAnswers.nth(1).fill("True");
+
+    await expect(textAnswers.nth(0)).toHaveValue("1998");
+    await expect(page.getByLabel("Central Library")).toBeChecked();
+    await expect(textAnswers.nth(1)).toHaveValue("True");
+
     await page.getByRole("button", { name: "Submit test" }).click();
     await expect(page.locator(".floating-error")).toBeHidden({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/correct$/).first()).toBeVisible();
+    await expect(page.getByText("3/3 correct")).toBeVisible();
+    await expect(page.locator(".review-question .question-type")).toHaveText([
+      "Short Answer",
+      "Multiple Choice",
+      "True False",
+    ]);
+    await expect(page.locator(".answer-row").filter({ hasText: "1998" })).toBeVisible();
+    await expect(page.locator(".answer-row").filter({ hasText: "Central Library" })).toBeVisible();
+    await expect(page.locator(".answer-row").filter({ hasText: "True" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
   });
 
