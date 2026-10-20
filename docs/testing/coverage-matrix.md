@@ -31,7 +31,7 @@ This document inventories the current automated test strategy. A listed test lay
 
 ## Current known Playwright suite and workflow behavior
 
-- Playwright test directory: `frontend/tests/e2e/` (11 tests across `auth-pages.spec.ts`, `practice-flow.spec.ts`, `other-skills.spec.ts`, and `listening-exam-mode.spec.ts`; verify the current Actions run for pass/fail status).
+- Playwright test directory: `frontend/tests/e2e/` (14 tests across `auth-pages.spec.ts`, `practice-flow.spec.ts`, `other-skills.spec.ts`, and `listening-exam-mode.spec.ts`; verify the current Actions run for pass/fail status).
 - Configuration: `frontend/playwright.config.ts`.
 - CI browser project: Chromium with retry enabled in CI; traces, screenshots, and video are retained on failures according to config.
 - The isolated browser workflow applies Alembic migrations, runs `backend/scripts/seed_e2e_practice.py`, starts FastAPI against its test PostgreSQL service, builds the frontend with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`, and runs `npm run test:e2e`.
