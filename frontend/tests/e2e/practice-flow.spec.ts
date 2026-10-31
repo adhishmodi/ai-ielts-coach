@@ -79,6 +79,34 @@ test.describe("authenticated workflows (isolated CI database only)", () => {
     expect(renewedTokens.refresh).toBe(originalRefreshToken);
   });
 
+  test("rejected refresh clears the invalid session and redirects to login", async ({ page }) => {
+    await createAccountThroughUi(page);
+
+    await page.evaluate(() => {
+      localStorage.setItem("access_token", "expired-access-token");
+      localStorage.setItem("refresh_token", "invalid-refresh-token");
+    });
+
+    let refreshRequests = 0;
+    await page.route("**/auth/refresh", async (route) => {
+      refreshRequests += 1;
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Invalid or expired refresh token" }),
+      });
+    });
+
+    await page.goto("/reading");
+
+    await expect(page).toHaveURL(/\\/login$/, { timeout: 15_000 });
+    await expect.poll(() => page.evaluate(() => ({
+      access: localStorage.getItem("access_token"),
+      refresh: localStorage.getItem("refresh_token"),
+    }))).toEqual({ access: null, refresh: null });
+    expect(refreshRequests).toBe(1);
+  });
+
   test("learner can complete a Listening practice attempt and review the score", async ({ page }) => {
     await createAccountThroughUi(page);
     await page.goto("/listening");
