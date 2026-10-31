@@ -136,3 +136,22 @@ test("Listening practice mode allows replaying a finished recording from the beg
   await expect(page.getByRole("button", { name: "Pause audio" })).toBeVisible();
   expect(await audio.evaluate((element) => element.currentTime)).toBe(0);
 });
+
+
+test("Listening displays an error and stays out of review when submission fails", async ({ page }) => {
+  await installFixture(page);
+  await startFixture(page);
+
+  await page.route("**/api/v1/listening/attempts/attempt-listening-regression/submit", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Submission temporarily unavailable." }),
+    }),
+  );
+
+  await page.getByRole("button", { name: "Submit test" }).click();
+  await expect(page.locator(".floating-error")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Your Listening review" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Submit test" })).toBeVisible();
+});
