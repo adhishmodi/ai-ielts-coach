@@ -1,5 +1,12 @@
 import pytest
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select
+
+from app.models.refresh_session import RefreshSession
+from app.services.refresh_token import hash_refresh_token
 from tests.conftest import register, login
+
 
 @pytest.mark.asyncio
 async def test_register(client):
@@ -37,6 +44,23 @@ async def test_refresh_and_logout(client):
     assert (await client.post("/api/v1/auth/refresh",json={"refresh_token":t["refresh_token"]})).status_code==200
     assert (await client.post("/api/v1/auth/logout",json={"refresh_token":t["refresh_token"]})).status_code==200
     assert (await client.post("/api/v1/auth/refresh",json={"refresh_token":t["refresh_token"]})).status_code==401
+
+@pytest.mark.asyncio
+async def test_expired_refresh_token_is_rejected(client, db):
+    email,password,_=await register(client)
+    tokens=await login(client,email,password)
+    session=await db.scalar(
+        select(RefreshSession).where(
+            RefreshSession.token_hash == hash_refresh_token(tokens["refresh_token"])
+        )
+    )
+    assert session is not None
+    session.expires_at=datetime.now(timezone.utc)-timedelta(seconds=1)
+    await db.commit()
+
+    response=await client.post("/api/v1/auth/refresh",json={"refresh_token":tokens["refresh_token"]})
+    assert response.status_code==401
+    assert response.json()["detail"]=="Refresh token has expired"
 
 @pytest.mark.asyncio
 async def test_bad_logout(client):
