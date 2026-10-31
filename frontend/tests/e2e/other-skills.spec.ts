@@ -55,6 +55,34 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
   });
 
+  test("Reading submission failure shows an error and does not enter review", async ({ page }) => {
+    await createAccountThroughUi(page);
+    await page.goto("/reading");
+
+    const testCard = page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Reading Test", exact: true }),
+    });
+    await expect(testCard).toBeVisible({ timeout: 15_000 });
+    await testCard.getByRole("button", { name: "Start test" }).click();
+    await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
+
+    await page.route("**/reading/attempts/*/submit", async (route) => {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Reading submission temporarily unavailable." }),
+      });
+    });
+
+    await page.getByRole("button", { name: "Submit test" }).click();
+    await expect(page.locator(".floating-error")).toContainText(
+      "Reading submission temporarily unavailable.",
+      { timeout: 10_000 },
+    );
+    await expect(page.getByRole("heading", { name: "Your Reading review" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Submit test" })).toBeVisible();
+  });
+
   test("Writing autosaves a draft as the learner types", async ({ page }) => {
     await createAccountThroughUi(page);
     await page.goto("/writing");
