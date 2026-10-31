@@ -99,7 +99,7 @@ test.describe("authenticated workflows (isolated CI database only)", () => {
 
     await page.goto("/reading");
 
-    await expect(page).toHaveURL(/\\/login$/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
     await expect.poll(() => page.evaluate(() => ({
       access: localStorage.getItem("access_token"),
       refresh: localStorage.getItem("refresh_token"),
