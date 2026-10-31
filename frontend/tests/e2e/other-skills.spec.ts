@@ -66,21 +66,37 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await testCard.getByRole("button", { name: "Start test" }).click();
     await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
 
+    let submitRequests = 0;
     await page.route("**/reading/attempts/*/submit", async (route) => {
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ detail: "Reading submission temporarily unavailable." }),
-      });
+      submitRequests += 1;
+      if (submitRequests === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "Reading submission temporarily unavailable." }),
+        });
+        return;
+      }
+      await route.continue();
     });
 
-    await page.getByRole("button", { name: "Submit test" }).click();
+    const submitButton = page.getByRole("button", { name: "Submit test" });
+    await submitButton.click();
     await expect(page.locator(".floating-error")).toContainText(
       "Reading submission temporarily unavailable.",
       { timeout: 10_000 },
     );
     await expect(page.getByRole("heading", { name: "Your Reading review" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Submit test" })).toBeVisible();
+    await expect(submitButton).toBeVisible();
+
+    // Retry the same attempt after the transient failure; the second request reaches
+    // the isolated API and must complete normally rather than leaving a dead-end state.
+    await submitButton.click();
+    await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText("3/3 correct")).toBeVisible();
+    expect(submitRequests).toBe(2);
   });
 
   test("Writing autosaves a draft as the learner types", async ({ page }) => {
