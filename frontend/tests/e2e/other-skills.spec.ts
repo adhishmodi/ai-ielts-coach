@@ -65,6 +65,10 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(testCard).toBeVisible({ timeout: 15_000 });
     await testCard.getByRole("button", { name: "Start test" }).click();
     await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
+    const textAnswers = page.getByPlaceholder("Type your answer");
+    await textAnswers.nth(0).fill("1998");
+    await page.getByLabel("Central Library").check();
+    await textAnswers.nth(1).fill("True");
 
     let submitRequests = 0;
     await page.route("**/reading/attempts/*/submit", async (route) => {
