@@ -47,6 +47,38 @@ test.describe("authenticated workflows (isolated CI database only)", () => {
     await expect(page.getByRole("heading", { name: "Listening", exact: true })).toBeVisible();
   });
 
+
+  test("expired access token refreshes and learner session continues", async ({ page }) => {
+    await createAccountThroughUi(page);
+
+    const originalRefreshToken = await page.evaluate(() => localStorage.getItem("refresh_token"));
+    expect(originalRefreshToken).toBeTruthy();
+
+    // Simulate access-token expiry without changing backend state. The real
+    // isolated API must refresh the session and serve the retried request.
+    await page.evaluate(() => localStorage.setItem("access_token", "expired-access-token"));
+    const refreshResponsePromise = page.waitForResponse((response) =>
+      response.url().includes("/auth/refresh") && response.request().method() === "POST",
+    );
+
+    await page.goto("/reading");
+    const refreshResponse = await refreshResponsePromise;
+    expect(refreshResponse.status()).toBe(200);
+
+    await expect(page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Reading Test", exact: true }),
+    })).toBeVisible({ timeout: 15_000 });
+
+    const renewedTokens = await page.evaluate(() => ({
+      access: localStorage.getItem("access_token"),
+      refresh: localStorage.getItem("refresh_token"),
+    }));
+    expect(renewedTokens.access).toBeTruthy();
+    expect(renewedTokens.access).not.toBe("expired-access-token");
+    expect(renewedTokens.refresh).toBeTruthy();
+    expect(renewedTokens.refresh).not.toBe(originalRefreshToken);
+  });
+
   test("learner can complete a Listening practice attempt and review the score", async ({ page }) => {
     await createAccountThroughUi(page);
     await page.goto("/listening");
