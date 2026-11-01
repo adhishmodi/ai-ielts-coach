@@ -142,7 +142,7 @@ test.describe("authenticated workflows (isolated CI database only)", () => {
     await page.getByLabel("Password").fill("NotARealPassword123!");
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await expect(page.locator(".error-box")).toContainText("401 Unauthorized", { timeout: 10_000 });
+    await expect(page.locator(".error-box")).toContainText("401: Invalid email or password", { timeout: 10_000 });
     await expect(page).toHaveURL(/\/login$/);
   });
 });
