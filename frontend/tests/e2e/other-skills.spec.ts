@@ -300,7 +300,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
       if (partNumber === 1) {
         const failedSave = page.waitForResponse((response) =>
           response.request().method() === "PUT" &&
-          /\\/speaking\\/attempts\\/[^/]+\\/parts\\/[^/]+$/.test(response.url()) &&
+          /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
           response.status() === 503,
         );
         await continueButton.click();
@@ -316,7 +316,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
         // Retry the same Part 1 save; this request reaches the isolated API.
         const retriedSave = page.waitForResponse((response) =>
           response.request().method() === "PUT" &&
-          /\\/speaking\\/attempts\\/[^/]+\\/parts\\/[^/]+$/.test(response.url()) &&
+          /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
           response.status() === 200,
         );
         await continueButton.click();
@@ -325,7 +325,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
       } else {
         const saveResponse = page.waitForResponse((response) =>
           response.request().method() === "PUT" &&
-          /\\/speaking\\/attempts\\/[^/]+\\/parts\\/[^/]+$/.test(response.url()) &&
+          /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
           response.status() === 200,
         );
         await continueButton.click();
