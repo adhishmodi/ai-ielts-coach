@@ -47,10 +47,16 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
-    try {
-      const body = await response.json();
-      message = typeof body.detail === "string" ? body.detail : message;
-    } catch {}
+    if (response.status === 401) {
+      // Keep the HTTP status in the error so authenticated page loaders can
+      // consistently clear an invalid session and redirect to sign-in.
+      message = "401 Unauthorized";
+    } else {
+      try {
+        const body = await response.json();
+        message = typeof body.detail === "string" ? body.detail : message;
+      } catch {}
+    }
     throw new Error(message);
   }
 
