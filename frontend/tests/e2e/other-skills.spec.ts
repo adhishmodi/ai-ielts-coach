@@ -34,24 +34,36 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     const textAnswers = page.getByPlaceholder("Type your answer");
     await textAnswers.nth(0).fill("1998");
     await page.getByLabel("Central Library").check();
-    await textAnswers.nth(1).fill("True");
+    const questionCards = page.locator(".question-card");
+    await questionCards.nth(2).getByLabel("True", { exact: true }).check();
+    await questionCards.nth(3).getByLabel("False", { exact: true }).check();
+    await questionCards.nth(4).getByLabel("Yes", { exact: true }).check();
+    await textAnswers.nth(1).fill("1998");
+    await textAnswers.nth(2).fill("weekday");
+    await questionCards.nth(7).getByLabel("1998", { exact: true }).check();
 
     await expect(textAnswers.nth(0)).toHaveValue("1998");
     await expect(page.getByLabel("Central Library")).toBeChecked();
-    await expect(textAnswers.nth(1)).toHaveValue("True");
+    await expect(textAnswers.nth(1)).toHaveValue("1998");
+    await expect(textAnswers.nth(2)).toHaveValue("weekday");
 
     await page.getByRole("button", { name: "Submit test" }).click();
     await expect(page.locator(".floating-error")).toBeHidden({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("3/3 correct")).toBeVisible();
+    await expect(page.getByText("8/8 correct")).toBeVisible();
     await expect(page.locator(".review-question .question-type")).toHaveText([
       "Short Answer",
       "Multiple Choice",
       "True False",
+      "True False Not Given",
+      "Yes No Not Given",
+      "Sentence Completion",
+      "Summary Completion",
+      "Matching",
     ]);
-    await expect(page.locator(".answer-row").filter({ hasText: "1998" })).toBeVisible();
-    await expect(page.locator(".answer-row").filter({ hasText: "Central Library" })).toBeVisible();
-    await expect(page.locator(".answer-row").filter({ hasText: "True" })).toBeVisible();
+    for (const answer of ["1998", "Central Library", "True", "False", "Yes", "weekday"]) {
+      await expect(page.locator(".answer-row").filter({ hasText: answer }).first()).toBeVisible();
+    }
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
   });
 
@@ -68,7 +80,13 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     const textAnswers = page.getByPlaceholder("Type your answer");
     await textAnswers.nth(0).fill("1998");
     await page.getByLabel("Central Library").check();
-    await textAnswers.nth(1).fill("True");
+    const questionCards = page.locator(".question-card");
+    await questionCards.nth(2).getByLabel("True", { exact: true }).check();
+    await questionCards.nth(3).getByLabel("False", { exact: true }).check();
+    await questionCards.nth(4).getByLabel("Yes", { exact: true }).check();
+    await textAnswers.nth(1).fill("1998");
+    await textAnswers.nth(2).fill("weekday");
+    await questionCards.nth(7).getByLabel("1998", { exact: true }).check();
 
     let submitRequests = 0;
     await page.route("**/reading/attempts/*/submit", async (route) => {
@@ -99,7 +117,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText("3/3 correct")).toBeVisible();
+    await expect(page.getByText("8/8 correct")).toBeVisible();
     expect(submitRequests).toBe(2);
   });
 
