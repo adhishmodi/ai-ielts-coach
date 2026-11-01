@@ -250,6 +250,25 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
       });
     });
 
+    // Fail the first save transiently, then let the same request reach the isolated API.
+    let partSaveCalls = 0;
+    await page.route("**/speaking/attempts/*/parts/*", async (route) => {
+      if (route.request().method() !== "PUT") {
+        await route.continue();
+        return;
+      }
+      partSaveCalls += 1;
+      if (partSaveCalls === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "Speaking save temporarily unavailable." }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
     const transcriptTexts = [
       "I enjoy learning new skills because they help me solve problems. I practise English regularly to prepare for my studies abroad.",
       "I would like to learn photography because it combines creativity with technology. I would practise on weekends and learn from experienced photographers.",
@@ -274,17 +293,45 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
       await transcript.fill(transcriptTexts[partNumber - 1]);
       await expect(transcript).toHaveValue(transcriptTexts[partNumber - 1]);
 
-      const saveResponse = page.waitForResponse((response) =>
-        response.request().method() === "PUT" &&
-        /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
-        response.status() === 200,
-      );
       const continueButton = page.getByRole("button", {
         name: partNumber === 3 ? "Finish test" : "Save & continue",
       });
-      await continueButton.click();
-      const saved = await saveResponse;
-      expect((await saved.json()).transcript).toBe(transcriptTexts[partNumber - 1]);
+
+      if (partNumber === 1) {
+        const failedSave = page.waitForResponse((response) =>
+          response.request().method() === "PUT" &&
+          /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
+          response.status() === 503,
+        );
+        await continueButton.click();
+        await failedSave;
+        await expect(page.locator(".floating-error")).toContainText(
+          "Speaking save temporarily unavailable.",
+          { timeout: 10_000 },
+        );
+        await expect(page.getByRole("heading", { name: "Part 1" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Part 2" })).toHaveCount(0);
+        await expect(transcript).toHaveValue(transcriptTexts[0]);
+
+        // Retry the same Part 1 save; this request reaches the isolated API.
+        const retriedSave = page.waitForResponse((response) =>
+          response.request().method() === "PUT" &&
+          /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
+          response.status() === 200,
+        );
+        await continueButton.click();
+        const saved = await retriedSave;
+        expect((await saved.json()).transcript).toBe(transcriptTexts[0]);
+      } else {
+        const saveResponse = page.waitForResponse((response) =>
+          response.request().method() === "PUT" &&
+          /\/speaking\/attempts\/[^/]+\/parts\/[^/]+$/.test(response.url()) &&
+          response.status() === 200,
+        );
+        await continueButton.click();
+        const saved = await saveResponse;
+        expect((await saved.json()).transcript).toBe(transcriptTexts[partNumber - 1]);
+      }
 
       if (partNumber < 3) {
         await expect(page.getByRole("heading", { name: new RegExp("Part " + (partNumber + 1)) })).toBeVisible({
