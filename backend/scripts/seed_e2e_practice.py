@@ -24,7 +24,7 @@ async def main() -> None:
             reading.passages = [
                 Passage(
                     title="Passage 1",
-                    content="The city library opened in 1998. It welcomes visitors every weekday.",
+                    content="The city library opened in 1998. It welcomes visitors every weekday. Researchers describe its quiet reading rooms as essential to the community.",
                     order=1,
                     questions=[
                         ReadingQuestion(
@@ -45,9 +45,48 @@ async def main() -> None:
                         ReadingQuestion(
                             question_text="The library welcomes visitors every weekday.",
                             question_type="true_false",
+                            options=["True", "False"],
                             correct_answer="True",
                             explanation="The passage says it welcomes visitors every weekday.",
                             order=3,
+                        ),
+                        ReadingQuestion(
+                            question_text="The library is closed on weekdays.",
+                            question_type="true_false_not_given",
+                            options=["True", "False", "Not Given"],
+                            correct_answer="False",
+                            explanation="The passage says it welcomes visitors every weekday.",
+                            order=4,
+                        ),
+                        ReadingQuestion(
+                            question_text="Does the passage say the reading rooms are essential to the community?",
+                            question_type="yes_no_not_given",
+                            options=["Yes", "No", "Not Given"],
+                            correct_answer="Yes",
+                            explanation="The passage describes the reading rooms as essential to the community.",
+                            order=5,
+                        ),
+                        ReadingQuestion(
+                            question_text="The library opened in ____.",
+                            question_type="sentence_completion",
+                            correct_answer="1998",
+                            explanation="The passage gives the opening year as 1998.",
+                            order=6,
+                        ),
+                        ReadingQuestion(
+                            question_text="Complete the summary: The library welcomes visitors every ____.",
+                            question_type="summary_completion",
+                            correct_answer="weekday",
+                            explanation="The passage says visitors are welcome every weekday.",
+                            order=7,
+                        ),
+                        ReadingQuestion(
+                            question_text="Match the facility to its opening year: Central Library.",
+                            question_type="matching",
+                            options=["1998", "2005", "2012"],
+                            correct_answer="1998",
+                            explanation="The passage states that the city library opened in 1998.",
+                            order=8,
                         ),
                     ],
                 ),
