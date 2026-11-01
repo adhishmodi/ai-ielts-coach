@@ -162,12 +162,13 @@ test.describe("authenticated workflows (isolated CI database only)", () => {
 
     await page.getByPlaceholder("Type your answer").nth(0).fill("1998");
     await page.getByLabel("Central Library").check();
-    await page.getByLabel("True", { exact: true }).check();
-    await page.getByLabel("False", { exact: true }).check();
-    await page.getByLabel("Yes", { exact: true }).check();
+    const questionCards = page.locator(".question-card");
+    await questionCards.nth(2).getByLabel("True", { exact: true }).check();
+    await questionCards.nth(3).getByLabel("False", { exact: true }).check();
+    await questionCards.nth(4).getByLabel("Yes", { exact: true }).check();
     await page.getByPlaceholder("Type your answer").nth(1).fill("1998");
     await page.getByPlaceholder("Type your answer").nth(2).fill("weekday");
-    await page.getByLabel("1998", { exact: true }).last().check();
+    await questionCards.nth(7).getByLabel("1998", { exact: true }).check();
 
     await expect(page.getByPlaceholder("Type your answer").nth(0)).toHaveValue("1998");
     await expect(page.getByPlaceholder("Type your answer").nth(1)).toHaveValue("1998");
