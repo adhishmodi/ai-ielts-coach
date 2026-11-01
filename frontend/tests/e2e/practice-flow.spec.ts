@@ -136,6 +136,53 @@ test.describe("authenticated workflows (isolated CI database only)", () => {
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
   });
 
+  test("learner can answer all supported Reading question types and review the score", async ({ page }) => {
+    await createAccountThroughUi(page);
+    await page.goto("/reading");
+
+    const testCard = page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Reading Test", exact: true }),
+    });
+    await expect(testCard).toBeVisible({ timeout: 15_000 });
+    await testCard.getByRole("button", { name: "Start test" }).click();
+
+    await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
+    for (const type of [
+      "Short Answer",
+      "Multiple Choice",
+      "True False",
+      "True False Not Given",
+      "Yes No Not Given",
+      "Sentence Completion",
+      "Summary Completion",
+      "Matching",
+    ]) {
+      await expect(page.getByText(type, { exact: true })).toBeVisible();
+    }
+
+    await page.getByPlaceholder("Type your answer").nth(0).fill("1998");
+    await page.getByLabel("Central Library").check();
+    const questionCards = page.locator(".question-card");
+    await questionCards.nth(2).getByLabel("True", { exact: true }).check();
+    await questionCards.nth(3).getByLabel("False", { exact: true }).check();
+    await questionCards.nth(4).getByLabel("Yes", { exact: true }).check();
+    await page.getByPlaceholder("Type your answer").nth(1).fill("1998");
+    await page.getByPlaceholder("Type your answer").nth(2).fill("weekday");
+    await questionCards.nth(7).getByLabel("1998", { exact: true }).check();
+
+    await expect(page.getByPlaceholder("Type your answer").nth(0)).toHaveValue("1998");
+    await expect(page.getByPlaceholder("Type your answer").nth(1)).toHaveValue("1998");
+    await expect(page.getByPlaceholder("Type your answer").nth(2)).toHaveValue("weekday");
+
+    await page.getByRole("button", { name: "Submit test" }).click();
+    await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("8/8 correct")).toBeVisible();
+
+    for (const answer of ["1998", "Central Library", "True", "False", "Yes", "weekday"]) {
+      await expect(page.getByText(answer, { exact: true }).first()).toBeVisible();
+    }
+  });
+
   test("invalid login shows a useful error and does not sign in", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(uniqueEmail());
