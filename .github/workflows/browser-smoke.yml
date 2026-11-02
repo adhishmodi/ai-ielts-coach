@@ -130,3 +130,34 @@ jobs:
             /tmp/ielts-api-e2e.log
           if-no-files-found: ignore
           retention-days: 7
+
+  public-browser-matrix:
+    name: Public page smoke (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install frontend dependencies
+        run: npm install --ignore-scripts
+      - name: Build frontend for browser smoke
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Run read-only public page checks
+        run: npx playwright test tests/e2e/production-smoke.spec.ts --project=${{ matrix.browser }}
+        env:
+          CI: "true"
