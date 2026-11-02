@@ -34,3 +34,21 @@ test("deployed login and registration pages fit a mobile viewport", async ({ pag
     expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
   }
 });
+
+
+test("protected skill pages load without creating user state", async ({ page }) => {
+  const mutatingRequests: string[] = [];
+  page.on("request", (request) => {
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method())) {
+      mutatingRequests.push(`${request.method()} ${request.url()}`);
+    }
+  });
+
+  for (const route of ["/reading", "/listening", "/writing", "/speaking"]) {
+    const response = await page.goto(route);
+    expect(response?.status()).toBeLessThan(400);
+    await expect(page.locator("body")).toBeVisible();
+  }
+
+  expect(mutatingRequests).toEqual([]);
+});
