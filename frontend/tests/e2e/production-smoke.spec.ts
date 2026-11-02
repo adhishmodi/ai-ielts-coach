@@ -52,7 +52,7 @@ test("protected skill routes are reachable without creating user state", async (
     // Production deployments should redirect unauthenticated users. CI's
     // browser matrix runs against a local static build without auth/API context.
     if (process.env.PLAYWRIGHT_BASE_URL) {
-      await expect(page).toHaveURL(/\\/login(?:\\?|$)/, { timeout: 15_000 });
+      expect(new URL(page.url()).pathname).toBe("/login");
       await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
     } else {
       expect(new URL(page.url()).pathname).toBe(route);
