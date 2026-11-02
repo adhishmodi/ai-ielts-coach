@@ -111,7 +111,7 @@ jobs:
 
       - name: Run browser suite
         working-directory: frontend
-        run: npm run test:e2e
+        run: npx playwright test --project=chromium
         env:
           CI: "true"
           # Explicitly prevent an inherited deployment URL from switching Playwright
