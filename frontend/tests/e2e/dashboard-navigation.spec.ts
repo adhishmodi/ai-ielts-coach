@@ -37,7 +37,7 @@ test.describe("cross-skill dashboard navigation (isolated CI database only)", ()
       await expect(card).toBeVisible();
       await card.click();
 
-      await expect(page).toHaveURL(new RegExp(`\\${skill.route.replace("/", "\\/")}$`));
+      await expect(page).toHaveURL(new URL(skill.route, page.url()).href);
       await expect(page.locator("header .muted").first()).toHaveText(skill.name);
       await expect(page.locator(".test-card").first()).toBeVisible({ timeout: 15_000 });
 
