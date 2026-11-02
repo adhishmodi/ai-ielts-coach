@@ -18,3 +18,19 @@ test("deployed registration page responds and renders without creating an accoun
   await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create account" })).toBeVisible();
 });
+
+
+test("deployed login and registration pages fit a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const route of ["/login", "/register"]) {
+    const response = await page.goto(route);
+    expect(response?.status()).toBeLessThan(400);
+    await expect(page.locator("body")).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: document.documentElement.clientWidth,
+    }));
+    expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
+  }
+});
