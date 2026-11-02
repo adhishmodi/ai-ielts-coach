@@ -36,7 +36,7 @@ test("deployed login and registration pages fit a mobile viewport", async ({ pag
 });
 
 
-test("protected skill routes are reachable without creating user state", async ({ page }) => {
+test("protected skill routes redirect unauthenticated visitors without creating state", async ({ page }) => {
   const mutatingRequests: string[] = [];
   page.on("request", (request) => {
     if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method())) {
@@ -45,18 +45,9 @@ test("protected skill routes are reachable without creating user state", async (
   });
 
   for (const route of ["/reading", "/listening", "/writing", "/speaking"]) {
-    const response = await page.goto(route);
-    expect(response?.status()).toBeLessThan(400);
-    await expect(page.locator("body")).toBeVisible();
-
-    // Production deployments should redirect unauthenticated users. CI's
-    // browser matrix runs against a local static build without auth/API context.
-    if (process.env.PLAYWRIGHT_BASE_URL) {
-      expect(new URL(page.url()).pathname).toBe("/login");
-      await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
-    } else {
-      expect(new URL(page.url()).pathname).toBe(route);
-    }
+    await page.goto(route);
+    await expect.poll(() => new URL(page.url()).pathname, { timeout: 20_000 }).toBe("/login");
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   }
 
   expect(mutatingRequests).toEqual([]);
