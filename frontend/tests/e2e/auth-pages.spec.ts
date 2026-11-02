@@ -31,3 +31,22 @@ test("registration page fits a mobile viewport without horizontal page overflow"
   }));
   expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
 });
+
+
+test("login form exposes keyboard-operable controls in tab order", async ({ page }) => {
+  await page.goto("/login");
+  const email = page.getByLabel("Email");
+  const password = page.getByLabel("Password");
+  const submit = page.getByRole("button", { name: "Sign in" });
+
+  await email.focus();
+  await expect(email).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(password).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(submit).toBeFocused();
+
+  await expect(email).toHaveAttribute("type", "email");
+  await expect(email).toHaveAttribute("required");
+  await expect(password).toHaveAttribute("required");
+});
