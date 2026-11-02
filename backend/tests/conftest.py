@@ -27,6 +27,11 @@ from app.models.writing_submission import WritingSubmission
 from app.models.writing_attempt import WritingAttempt
 from app.models.writing_task import WritingTask
 from app.models.writing_test import WritingTest
+from app.models.speaking_evaluation import SpeakingEvaluation
+from app.models.speaking_response import SpeakingResponse
+from app.models.speaking_attempt import SpeakingAttempt
+from app.models.speaking_part import SpeakingPart
+from app.models.speaking_test import SpeakingTest
 
 @pytest_asyncio.fixture
 async def db():
@@ -43,7 +48,8 @@ async def client():
 async def clean_db():
     async with AsyncSessionLocal() as session:
         for model in (
-            WritingEvaluation, WritingSubmission, WritingAttempt, WritingTask, WritingTest,
+            SpeakingEvaluation, SpeakingResponse, SpeakingAttempt, SpeakingPart, SpeakingTest,
+        WritingEvaluation, WritingSubmission, WritingAttempt, WritingTask, WritingTest,
             ListeningAnswer, ListeningAttempt, ListeningQuestion, ListeningSection, ListeningTest,
             ReadingAnswer, ReadingAttempt, ReadingQuestion, Passage, ReadingTest,
             RefreshSession, User,
