@@ -34,3 +34,12 @@ test("deployed login and registration pages fit a mobile viewport", async ({ pag
     expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
   }
 });
+
+
+test("deployed protected skill pages redirect unauthenticated visitors to login", async ({ page }) => {
+  for (const route of ["/reading", "/listening", "/writing", "/speaking"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  }
+});
