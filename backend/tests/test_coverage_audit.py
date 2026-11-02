@@ -47,7 +47,7 @@ async def test_attempt_owner_only_for_reading_and_listening(client, db, skill, s
     else:
         # Listening detail serializes one blank answer row per question before submission.
         assert all(answer.get("user_answer", "") == "" for answer in owner_answers)
-        assert owner_detail.json().get("status") == "in_progress"
+        assert owner_detail.json().get("score") is None
 
 
 @pytest.mark.asyncio
