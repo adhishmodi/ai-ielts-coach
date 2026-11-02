@@ -138,20 +138,45 @@ test("Listening practice mode allows replaying a finished recording from the beg
 });
 
 
-test("Listening displays an error and stays out of review when submission fails", async ({ page }) => {
+test("Listening submission can be retried after a transient failure", async ({ page }) => {
   await installFixture(page);
   await startFixture(page);
 
-  await page.route("**/api/v1/listening/attempts/attempt-listening-regression/submit", (route) =>
-    route.fulfill({
-      status: 503,
+  let submissionAttempts = 0;
+  await page.route("**/api/v1/listening/attempts/attempt-listening-regression/submit", (route) => {
+    submissionAttempts += 1;
+    if (submissionAttempts === 1) {
+      return route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Submission temporarily unavailable." }),
+      });
+    }
+    return route.fulfill({
+      status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ detail: "Submission temporarily unavailable." }),
-    }),
-  );
+      body: JSON.stringify({
+        attempt_id: "attempt-listening-regression",
+        score: 0,
+        total_questions: 1,
+        band_score: 1,
+      }),
+    });
+  });
 
-  await page.getByRole("button", { name: "Submit test" }).click();
-  await expect(page.locator(".floating-error")).toBeVisible({ timeout: 10_000 });
+  const submitButton = page.getByRole("button", { name: "Submit test" });
+  await submitButton.click();
+  await expect(page.locator(".floating-error")).toContainText(
+    "Submission temporarily unavailable.",
+    { timeout: 10_000 },
+  );
   await expect(page.getByRole("heading", { name: "Your Listening review" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Submit test" })).toBeVisible();
+  await expect(submitButton).toBeVisible();
+
+  await submitButton.click();
+  await expect(page.getByRole("heading", { name: "Your Listening review" })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByText("0/1 correct").first()).toBeVisible();
+  expect(submissionAttempts).toBe(2);
 });
