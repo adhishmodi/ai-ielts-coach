@@ -55,7 +55,7 @@ test("protected skill routes are reachable without creating user state", async (
       await expect(page).toHaveURL(/\\/login(?:\\?|$)/, { timeout: 15_000 });
       await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
     } else {
-      await expect(page).toHaveURL(new RegExp(`${route.replace("/", "\\\\/")}$`));
+      expect(new URL(page.url()).pathname).toBe(route);
     }
   }
 
