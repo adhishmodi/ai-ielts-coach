@@ -33,9 +33,9 @@ This document inventories the current automated test strategy. A listed test lay
 
 - Playwright test directory: `frontend/tests/e2e/` contains 30 tests across twelve spec files, including `mobile-reading.spec.ts`, `mobile-listening.spec.ts`, `mobile-writing.spec.ts`, and `mobile-speaking.spec.ts`. Verify the current Actions run for pass/fail status.
 - Configuration: `frontend/playwright.config.ts`.
-- CI browser project: Chromium with retry enabled in CI; traces, screenshots, and video are retained on failures according to config.
+- CI full stateful browser suite: Chromium with retry enabled; the deployed read-only public-page smoke suite runs independently in Chromium, Firefox, and WebKit. Traces, screenshots, and video are retained on failures according to config.
 - The isolated browser workflow applies Alembic migrations, runs `backend/scripts/seed_e2e_practice.py`, starts FastAPI against its test PostgreSQL service, builds the frontend with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`, and runs `npm run test:e2e`. This suite may mutate data and must stay pointed at disposable CI data.
-- The production smoke workflow runs only `npx playwright test tests/e2e/production-smoke.spec.ts`. These tests navigate to the public login and registration pages and assert visible form elements; they do not submit forms, sign in, create accounts, start practice attempts, or save drafts.
+- The production smoke workflow runs `npx playwright test tests/e2e/production-smoke.spec.ts` once per Chromium, Firefox, and WebKit matrix job. The full isolated stateful browser workflow explicitly runs the Chromium project only. These tests navigate to the public login and registration pages and assert visible form elements; they do not submit forms, sign in, create accounts, start practice attempts, or save drafts.
 - Do not set `PLAYWRIGHT_BASE_URL` to a production URL when running the full state-mutating E2E suite. The production workflow's dedicated spec is the only suite intended for deployed read-only checks.
 - Failure diagnostics are uploaded as workflow artifacts when the corresponding job fails.
 
