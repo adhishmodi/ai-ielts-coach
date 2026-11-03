@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 function uniqueEmail() {
   return `mobile-writing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -28,6 +28,15 @@ async function waitForDraftSave(page: Page) {
   );
 }
 
+async function expectResponsiveLayout(page: Page, keyElement: Locator) {
+  for (const width of [768, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(keyElement).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+}
+
 test.describe("responsive Writing journey (isolated CI database only)", () => {
   test.skip(
     Boolean(process.env.PLAYWRIGHT_BASE_URL),
@@ -46,13 +55,13 @@ test.describe("responsive Writing journey (isolated CI database only)", () => {
     await page.goto("/writing");
     const testCard = page.locator(".test-card").first();
     await expect(testCard).toBeVisible({ timeout: 15_000 });
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, testCard);
     await expect(testCard.getByRole("button", { name: "Start test" })).toBeVisible();
     await testCard.getByRole("button", { name: "Start test" }).click();
 
     const editor = page.getByPlaceholder("Start writing here…");
     await expect(editor).toBeVisible();
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, editor);
 
     // Mock only the external evaluator; attempt, draft, submission, and detail
     // persistence continue through the isolated CI API and PostgreSQL database.
@@ -99,7 +108,7 @@ test.describe("responsive Writing journey (isolated CI database only)", () => {
       const saved = await savedResponse;
       expect((await saved.json()).word_count).toBe(minimumWords + 5);
       await expect(page.locator(".save-status")).toContainText(/^Saved\b/, { timeout: 10_000 });
-      await expectNoHorizontalOverflow(page);
+      await expectResponsiveLayout(page, editor);
     }
 
     // Switching tasks must preserve the text entered in each editor.
@@ -120,6 +129,6 @@ test.describe("responsive Writing journey (isolated CI database only)", () => {
     });
     await expect(page.locator(".result-card .score")).toHaveText(["7", "7"]);
     expect(evaluationCalls).toBe(2);
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, page.getByRole("heading", { name: "Your Writing review" }));
   });
 });
