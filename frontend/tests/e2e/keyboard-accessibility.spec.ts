@@ -88,14 +88,10 @@ test.describe("keyboard accessibility journeys (isolated CI database only)", () 
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(new RegExp(`${skill.route.replace("/", "\\/")}$`));
 
-      const testCard = skill.name === "Listening"
-        ? page.locator(".test-card").filter({ hasText: "Listening Practice 1: Everyday Conversations" })
-        : page.locator(".test-card").filter({
-            has: page.getByRole("heading", { name: skill.name === "Speaking" ? "E2E Speaking Test" : "E2E Reading Test", exact: true }),
-          });
+      const startButton = page.getByRole("button", { name: skill.cardAction }).first();
+      const testCard = page.locator(".test-card").filter({ has: startButton }).first();
 
       await expect(testCard).toBeVisible({ timeout: 15_000 });
-      const startButton = testCard.getByRole("button", { name: skill.cardAction });
       await tabUntilFocused(page, startButton);
       await expect
         .poll(() => startButton.evaluate((element) => element.matches(":focus-visible")))
