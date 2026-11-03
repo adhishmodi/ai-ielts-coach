@@ -32,7 +32,7 @@ This document inventories the current automated test strategy. A listed test lay
 
 ## Current known Playwright suite and workflow behavior
 
-- Playwright test directory: `frontend/tests/e2e/` contains 38 tests across sixteen spec files, including `accessibility.spec.ts`, `keyboard-accessibility.spec.ts`, `mobile-reading.spec.ts`, `mobile-listening.spec.ts`, `mobile-writing.spec.ts`, and `mobile-speaking.spec.ts`. Verify the current Actions run for pass/fail status.
+- Playwright test directory: `frontend/tests/e2e/` contains 39 tests across seventeen spec files, including `accessibility.spec.ts`, `keyboard-accessibility.spec.ts`, `keyboard-practice-flows.spec.ts`, `mobile-reading.spec.ts`, `mobile-listening.spec.ts`, `mobile-writing.spec.ts`, and `mobile-speaking.spec.ts`. Verify the current Actions run for pass/fail status.
 - Configuration: `frontend/playwright.config.ts`.
 - CI full stateful browser suite: Chromium with retry enabled; the deployed read-only public-page smoke suite runs independently in Chromium, Firefox, and WebKit. Traces, screenshots, and video are retained on failures according to config.
 - The isolated browser workflow applies Alembic migrations, runs `backend/scripts/seed_e2e_practice.py`, starts FastAPI against its test PostgreSQL service, builds the frontend with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`, and runs `npm run test:e2e`. This suite may mutate data and must stay pointed at disposable CI data.
@@ -49,3 +49,8 @@ When changing test coverage:
 3. Note whether the test uses isolated fixtures, mocked external services, or live dependencies.
 4. Record gaps honestly; do not infer coverage from a route existing or from a successful build.
 5. Use actual GitHub Actions results for pass/fail status. Do not store transient status such as “currently green” as a permanent coverage fact.
+
+
+## Keyboard task-flow extension
+
+`frontend/tests/e2e/keyboard-practice-flows.spec.ts` verifies keyboard-only Reading answer entry and submission, Listening answer selection and section navigation, Writing task-tab switching and submission, and Speaking preparation, transcript entry, save/advance, and completion. Stateful interactions use isolated CI PostgreSQL; Writing and Speaking evaluations are mocked. This complements `keyboard-accessibility.spec.ts`, which covers dashboard navigation and operating an active control.
