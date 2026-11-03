@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch, clearTokens, SkillAttempt } from "../lib/api";
 
@@ -117,7 +118,7 @@ export default function DashboardPage() {
               const latest = attempts.find((a) => a.submitted_at);
               const band = latest ? bandValue([latest]) : null;
               return (
-                <article className="dashboard-skill-card" key={skill} onClick={() => router.push(skillMeta[skill].route)}>
+                <Link className="dashboard-skill-card" key={skill} href={skillMeta[skill].route}>
                   <div className="skill-card-top"><span className="skill-icon">{skillMeta[skill].icon}</span><span className="skill-arrow">→</span></div>
                   <h3>{skill}</h3>
                   <p>{skillMeta[skill].description}</p>
@@ -125,7 +126,7 @@ export default function DashboardPage() {
                     <span>{attempts.filter((a) => a.submitted_at).length} completed</span>
                     <strong>{band !== null ? `Band ${band}` : "Start now"}</strong>
                   </div>
-                </article>
+                </Link>
               );
             })}
           </div>
