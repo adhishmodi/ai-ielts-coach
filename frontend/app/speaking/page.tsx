@@ -338,7 +338,8 @@ export default function SpeakingPage() {
           </div>
         </header>
         <section className="result-hero speaking-result-hero">
-          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Speaking review</h1><p className="muted">{submitted?.status === "evaluated" ? "All three parts have been evaluated." : "Your responses were submitted successfully."}</p></div>
+          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Speaking review</h1><p role="status" aria-live="polite" className="muted">{submitted?.status === "evaluated" ? "All three parts have been evaluated." : "Your responses were submitted successfully."}</p>
+            {error && <div role="alert" className="error-box page-message">{error}</div>}</div>
           <div className="overall-band"><span>Overall</span><strong>{attemptDetail.overall_band ?? "—"}</strong></div>
         </section>
         <div className="results-grid">
