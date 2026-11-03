@@ -18,6 +18,7 @@
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
     "typescript": "5.9.2",
-    "@playwright/test": "^1.55.0"
+    "@playwright/test": "^1.55.0",
+    "@axe-core/playwright": "^4.10.3"
   }
 }
