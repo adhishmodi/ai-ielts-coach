@@ -39,14 +39,13 @@ test.describe("Speaking evaluation failure (isolated CI database only)", () => {
       has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
     });
     await expect(testCard).toBeVisible({ timeout: 15_000 });
-    await testCard.getByRole("button", { name: "Start speaking test" }).click();
-
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
     const startResponse = page.waitForResponse((response) =>
       response.request().method() === "POST" &&
       /\/speaking\/tests\/[^/]+\/start$/.test(response.url()) &&
       response.status() === 200,
     );
+    await testCard.getByRole("button", { name: "Start speaking test" }).click();
 
     let evaluationCalls = 0;
     await page.route("**/speaking/responses/*/evaluate", async (route) => {
