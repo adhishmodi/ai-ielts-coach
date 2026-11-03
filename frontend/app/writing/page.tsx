@@ -187,7 +187,8 @@ export default function WritingPage() {
       <main className="app-shell">
         <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/speaking")}>Speaking</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
         <section className="result-hero">
-          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Writing review</h1><p className="muted">{submitted?.below_minimum_tasks.length ? `Task ${submitted.below_minimum_tasks.join(" and ")} fell below the recommended word count.` : "Both tasks were submitted successfully."}</p></div>
+          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Writing review</h1><p role="status" aria-live="polite" className="muted">{submitted?.below_minimum_tasks.length ? `Task ${submitted.below_minimum_tasks.join(" and ")} fell below the recommended word count.` : "Both tasks were submitted successfully."}</p>
+          {error && <div role="alert" className="error-box page-message">{error}</div>}</div>
           <div className="overall-band"><span>Overall</span><strong>{attemptDetail.overall_band ?? "—"}</strong></div>
         </section>
         <div className="results-grid">
