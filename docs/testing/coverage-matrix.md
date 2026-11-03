@@ -49,3 +49,8 @@ When changing test coverage:
 3. Note whether the test uses isolated fixtures, mocked external services, or live dependencies.
 4. Record gaps honestly; do not infer coverage from a route existing or from a successful build.
 5. Use actual GitHub Actions results for pass/fail status. Do not store transient status such as “currently green” as a permanent coverage fact.
+
+
+## Keyboard task-flow extension
+
+`frontend/tests/e2e/keyboard-practice-flows.spec.ts` verifies keyboard-only Reading answer entry and submission, Listening answer selection and section navigation, Writing task-tab switching and submission, and Speaking preparation, transcript entry, save/advance, and completion. Stateful interactions use isolated CI PostgreSQL; Writing and Speaking evaluations are mocked. This complements `keyboard-accessibility.spec.ts`, which covers dashboard navigation and operating an active control.
