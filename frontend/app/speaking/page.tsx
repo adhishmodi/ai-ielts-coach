@@ -310,7 +310,7 @@ export default function SpeakingPage() {
           <h1>Practice like the real interview.</h1>
           <p>Move through Parts 1, 2 and 3 with preparation time, timed speaking, microphone recording and live transcript capture.</p>
         </section>
-        {error && <div className="error-box page-message">{error}</div>}
+        {error && <div role="alert" className="error-box page-message">{error}</div>}
         <section className="test-grid">
           {tests.map((test) => (
             <article className="test-card" key={test.id}>
@@ -338,7 +338,8 @@ export default function SpeakingPage() {
           </div>
         </header>
         <section className="result-hero speaking-result-hero">
-          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Speaking review</h1><p className="muted">{submitted?.status === "evaluated" ? "All three parts have been evaluated." : "Your responses were submitted successfully."}</p></div>
+          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Speaking review</h1><p role="status" aria-live="polite" className="muted">{submitted?.status === "evaluated" ? "All three parts have been evaluated." : "Your responses were submitted successfully."}</p>
+            {error && <div role="alert" className="error-box page-message">{error}</div>}</div>
           <div className="overall-band"><span>Overall</span><strong>{attemptDetail.overall_band ?? "—"}</strong></div>
         </section>
         <div className="results-grid">
@@ -424,8 +425,8 @@ export default function SpeakingPage() {
           )}
         </>}
       </section>
-      {error && <div className="floating-error">{error}</div>}
-      {message && <div className="floating-message">{message}</div>}
+      {error && <div role="alert" className="floating-error">{error}</div>}
+      {message && <div role="status" aria-live="polite" className="floating-message">{message}</div>}
     </main>
   );
 }

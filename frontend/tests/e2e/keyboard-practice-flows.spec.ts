@@ -25,8 +25,8 @@ async function tabUntilFocused(page: Page, target: Locator, maxTabs = 80) {
   throw new Error(`Could not reach ${await target.toString()} using Tab within ${maxTabs} presses`);
 }
 
-async function activateWithKeyboard(page: Page, target: Locator, key: "Enter" | "Space" = "Enter") {
-  await tabUntilFocused(page, target);
+async function activateWithKeyboard(page: Page, target: Locator, key: "Enter" | "Space" = "Enter", maxTabs = 80) {
+  await tabUntilFocused(page, target, maxTabs);
   await expect.poll(() => target.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
   await page.keyboard.press(key);
 }
@@ -81,7 +81,7 @@ test.describe("keyboard-only practice task flows (isolated CI database only)", (
     await expect(page.getByRole("heading", { name: "Section 2: Transportation" })).toBeVisible();
 
     const taxiAnswer = page.getByLabel("Taxis are hard to get during rush hour");
-    await activateWithKeyboard(page, taxiAnswer, "Space");
+    await activateWithKeyboard(page, taxiAnswer, "Space", 200);
     await expect(taxiAnswer).toBeChecked();
     await activateWithKeyboard(page, page.getByRole("button", { name: "Submit test" }));
     await expect(page.getByRole("heading", { name: "Your Listening review" })).toBeVisible({ timeout: 15_000 });

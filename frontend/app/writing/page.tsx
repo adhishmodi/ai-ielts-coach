@@ -165,7 +165,7 @@ export default function WritingPage() {
       <main className="app-shell">
         <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/speaking")}>Speaking</button><button className="ghost-button" onClick={() => { clearTokens(); router.replace("/login"); }}>Sign out</button></div></header>
         <section className="hero"><div className="eyebrow">WRITING PRACTICE</div><h1>Build your Writing score.</h1><p>Choose a test, write both tasks under exam conditions, and receive AI feedback after submission.</p></section>
-        {error && <div className="error-box page-message">{error}</div>}
+        {error && <div role="alert" className="error-box page-message">{error}</div>}
         <section className="test-grid">
           {tests.map((test) => (
             <article className="test-card" key={test.id}>
@@ -187,7 +187,8 @@ export default function WritingPage() {
       <main className="app-shell">
         <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Writing results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/speaking")}>Speaking</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
         <section className="result-hero">
-          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Writing review</h1><p className="muted">{submitted?.below_minimum_tasks.length ? `Task ${submitted.below_minimum_tasks.join(" and ")} fell below the recommended word count.` : "Both tasks were submitted successfully."}</p></div>
+          <div><div className="eyebrow">TEST COMPLETE</div><h1>Your Writing review</h1><p role="status" aria-live="polite" className="muted">{submitted?.below_minimum_tasks.length ? `Task ${submitted.below_minimum_tasks.join(" and ")} fell below the recommended word count.` : "Both tasks were submitted successfully."}</p>
+          {error && <div role="alert" className="error-box page-message">{error}</div>}</div>
           <div className="overall-band"><span>Overall</span><strong>{attemptDetail.overall_band ?? "—"}</strong></div>
         </section>
         <div className="results-grid">
@@ -228,7 +229,7 @@ export default function WritingPage() {
               <span>Task {task.task_number}</span><small>{count} words</small>
             </button>;
           })}
-          <div className="save-status">{saving ? "Saving…" : lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Autosave enabled"}</div>
+          <div role="status" aria-live="polite" className="save-status">{saving ? "Saving…" : lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Autosave enabled"}</div>
           <button className="submit-button" disabled={busy} onClick={() => void submitTest(false)}>{busy ? "Submitting…" : "Submit test"}</button>
         </aside>
         <section className="editor-panel">
@@ -240,8 +241,8 @@ export default function WritingPage() {
           </>}
         </section>
       </div>
-      {error && <div className="floating-error">{error}</div>}
-      {message && <div className="floating-message">{message}</div>}
+      {error && <div role="alert" className="floating-error">{error}</div>}
+      {message && <div role="status" aria-live="polite" className="floating-message">{message}</div>}
     </main>
   );
 }

@@ -113,7 +113,7 @@ export default function ListeningPage() {
     <main className="app-shell">
       <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Listening</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/")}>Dashboard</button><button className="ghost-button" onClick={() => { clearTokens(); router.replace("/login"); }}>Sign out</button></div></header>
       <section className="hero"><div className="eyebrow">LISTENING PRACTICE</div><h1>Train attention and accuracy.</h1><p>Move through IELTS-style listening sections, answer each question, and review your score after submission.</p></section>
-      {error && <div className="error-box page-message">{error}</div>}
+      {error && <div role="alert" className="error-box page-message">{error}</div>}
       <section className="test-grid">
         {tests.map((test) => <article className="test-card" key={test.id}>
           <div className="pill-row"><span className="pill">{test.difficulty}</span><span className="pill">Listening practice</span></div>
@@ -131,6 +131,7 @@ export default function ListeningPage() {
     <main className="app-shell">
       <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Listening results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/")}>Dashboard</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
       <section className="result-hero"><div><div className="eyebrow">PRACTICE COMPLETE</div><h1>Your Listening review</h1><p className="muted">Review every answer and explanation. The band is an estimate based on this practice score.</p></div><div className="overall-band"><span>Estimated band</span><strong>{result.band_score}</strong><small>{result.score}/{result.total_questions} correct</small></div></section>
+      {error && <div role="status" aria-live="polite" className="page-message">{error}</div>}
       <section className="review-list">
         {selectedTest.sections.map((s, si) => <article className="result-card" key={s.id}>
           <div className="review-passage-title"><span className="eyebrow">SECTION {si + 1}</span><h2>{s.title}</h2><span className="muted">{detail.answers.filter((a) => a.section_title === s.title && a.is_correct).length}/{s.questions.length} correct</span></div>
@@ -188,7 +189,7 @@ export default function ListeningPage() {
           </>}
         </section>
       </div>
-      {error && <div className="floating-error">{error}</div>}
+      {error && <div role="alert" className="floating-error">{error}</div>}
     </main>
   );
 }

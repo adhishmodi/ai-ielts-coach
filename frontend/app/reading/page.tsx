@@ -100,7 +100,7 @@ export default function ReadingPage() {
     <main className="app-shell">
       <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Reading</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/")}>Dashboard</button><button className="ghost-button" onClick={() => { clearTokens(); router.replace("/login"); }}>Sign out</button></div></header>
       <section className="hero"><div className="eyebrow">READING PRACTICE</div><h1>Read smarter under time pressure.</h1><p>Work through passages and IELTS-style question types, submit once, then review every answer and explanation available from the test.</p></section>
-      {error && <div className="error-box page-message">{error}</div>}
+      {error && <div role="alert" className="error-box page-message">{error}</div>}
       <section className="test-grid">
         {tests.map((test) => <article className="test-card" key={test.id}>
           <div className="pill-row"><span className="pill">{test.difficulty}</span><span className="pill">Academic</span></div>
@@ -116,7 +116,8 @@ export default function ReadingPage() {
   if (view === "results" && selectedTest && detail && result) return (
     <main className="app-shell">
       <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Reading results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/")}>Dashboard</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
-      <section className="result-hero"><div><div className="eyebrow">TEST COMPLETE</div><h1>Your Reading review</h1><p className="muted">Review your score and each submitted answer.</p></div><div className="overall-band"><span>Band</span><strong>{result.band_score}</strong><small>{result.score}/{result.total_questions} correct</small></div></section>
+      <section className="result-hero"><div><div className="eyebrow">TEST COMPLETE</div><h1>Your Reading review</h1><p className="muted">Review your score and each submitted answer.</p>
+      {error && <div role="status" aria-live="polite" className="page-message">{error}</div>}</div><div className="overall-band"><span>Band</span><strong>{result.band_score}</strong><small>{result.score}/{result.total_questions} correct</small></div></section>
       <section className="review-list">
         {selectedTest.passages.map((p) => <article className="result-card" key={p.id}>
           <div className="review-passage-title"><span className="eyebrow">PASSAGE {p.order + 1}</span><h2>{p.title}</h2></div>
@@ -158,7 +159,7 @@ export default function ReadingPage() {
           </>}
         </section>
       </div>
-      {error && <div className="floating-error">{error}</div>}
+      {error && <div role="alert" className="floating-error">{error}</div>}
     </main>
   );
 }
