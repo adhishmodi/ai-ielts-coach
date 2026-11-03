@@ -54,3 +54,8 @@ When changing test coverage:
 ## Keyboard task-flow extension
 
 `frontend/tests/e2e/keyboard-practice-flows.spec.ts` verifies keyboard-only Reading answer entry and submission, Listening answer selection and section navigation, Writing task-tab switching and submission, and Speaking preparation, transcript entry, save/advance, and completion. Stateful interactions use isolated CI PostgreSQL; Writing and Speaking evaluations are mocked. This complements `keyboard-accessibility.spec.ts`, which covers dashboard navigation and operating an active control.
+
+
+## API ownership audit
+
+`backend/tests/test_api_ownership_audit.py` verifies cross-user isolation for Reading, Listening, Writing, and Speaking: foreign users cannot list another user's attempts, retrieve attempt details, submit Reading/Listening attempts, edit Writing drafts, overwrite Speaking transcripts, or evaluate another user's Speaking response. The tests use registered test accounts and seeded records in the isolated backend test database. API ownership gaps outside these exercised operations remain subject to route-by-route review.
