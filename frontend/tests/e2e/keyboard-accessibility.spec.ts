@@ -104,6 +104,18 @@ test.describe("keyboard accessibility journeys (isolated CI database only)", () 
         await expect(page.getByRole("heading", { name: skill.activeHeading! })).toBeVisible();
       }
 
+      // Speaking starts in a preparation phase. Keyboard-activate its explicit
+      // transition before asserting focus on the transcript editor.
+      if (skill.name === "Speaking") {
+        const beginSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
+        await tabUntilFocused(page, beginSpeakingButton);
+        await expect
+          .poll(() => beginSpeakingButton.evaluate((element) => element.matches(":focus-visible")))
+          .toBe(true);
+        await page.keyboard.press("Enter");
+        await expect(skill.activeControl()).toBeVisible();
+      }
+
       const activeControl = skill.activeControl();
       await tabUntilFocused(page, activeControl);
       await expect(activeControl).toBeFocused();
