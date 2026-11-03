@@ -118,7 +118,6 @@ export default function ReadingPage() {
       <header className="topbar"><div><div className="brand">AI IELTS Coach</div><span className="muted">Reading results</span></div><div className="top-actions"><button className="ghost-button" onClick={() => router.push("/")}>Dashboard</button><button className="ghost-button" onClick={() => setView("select")}>Back to tests</button></div></header>
       <section className="result-hero"><div><div className="eyebrow">TEST COMPLETE</div><h1>Your Reading review</h1><p className="muted">Review your score and each submitted answer.</p>
       {error && <div role="status" aria-live="polite" className="page-message">{error}</div>}</div><div className="overall-band"><span>Band</span><strong>{result.band_score}</strong><small>{result.score}/{result.total_questions} correct</small></div></section>
-      {error && <div role="status" aria-live="polite" className="page-message">{error}</div>}
       <section className="review-list">
         {selectedTest.passages.map((p) => <article className="result-card" key={p.id}>
           <div className="review-passage-title"><span className="eyebrow">PASSAGE {p.order + 1}</span><h2>{p.title}</h2></div>
