@@ -310,7 +310,7 @@ export default function SpeakingPage() {
           <h1>Practice like the real interview.</h1>
           <p>Move through Parts 1, 2 and 3 with preparation time, timed speaking, microphone recording and live transcript capture.</p>
         </section>
-        {error && <div className="error-box page-message">{error}</div>}
+        {error && <div role="alert" className="error-box page-message">{error}</div>}
         <section className="test-grid">
           {tests.map((test) => (
             <article className="test-card" key={test.id}>
@@ -424,8 +424,8 @@ export default function SpeakingPage() {
           )}
         </>}
       </section>
-      {error && <div className="floating-error">{error}</div>}
-      {message && <div className="floating-message">{message}</div>}
+      {error && <div role="alert" className="floating-error">{error}</div>}
+      {message && <div role="status" aria-live="polite" className="floating-message">{message}</div>}
     </main>
   );
 }
