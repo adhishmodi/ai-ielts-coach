@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 function uniqueEmail() {
   return `mobile-reading-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -9,10 +9,23 @@ async function expectNoHorizontalOverflow(page: Page) {
     documentWidth: document.documentElement.scrollWidth,
     viewportWidth: document.documentElement.clientWidth,
   }));
-  expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
+  expect(
+    dimensions.documentWidth,
+    `No horizontal overflow at ${dimensions.viewportWidth}px viewport`,
+  ).toBeLessThanOrEqual(dimensions.viewportWidth);
 }
 
-test.describe("mobile Reading journey (isolated CI database only)", () => {
+async function expectResponsiveLayout(page: Page, keyElement: Locator) {
+  for (const width of [390, 768, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(keyElement).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  }
+  // Preserve the existing mobile interactions after each responsive check.
+  await page.setViewportSize({ width: 390, height: 844 });
+}
+
+test.describe("responsive Reading journey (isolated CI database only)", () => {
   test.skip(
     Boolean(process.env.PLAYWRIGHT_BASE_URL),
     "This journey creates an account and attempt; run only against the isolated PostgreSQL service in CI.",
@@ -32,14 +45,14 @@ test.describe("mobile Reading journey (isolated CI database only)", () => {
       has: page.getByRole("heading", { name: "E2E Reading Test", exact: true }),
     });
     await expect(testCard).toBeVisible({ timeout: 15_000 });
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, testCard);
     const startButton = testCard.getByRole("button", { name: "Start test" });
     await expect(startButton).toBeVisible();
     await startButton.click();
 
     await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
     await expect(page.locator(".passage-text")).toBeVisible();
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, page.locator(".passage-text"));
 
     const textAnswers = page.getByPlaceholder("Type your answer");
     await textAnswers.nth(0).fill("1998");
@@ -62,6 +75,6 @@ test.describe("mobile Reading journey (isolated CI database only)", () => {
     });
     await expect(page.getByText("8/8 correct")).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, page.getByRole("heading", { name: "Your Reading review" }));
   });
 });

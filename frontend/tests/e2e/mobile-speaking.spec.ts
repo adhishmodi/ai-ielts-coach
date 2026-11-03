@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 function uniqueEmail() {
   return `mobile-speaking-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -9,10 +9,23 @@ async function expectNoHorizontalOverflow(page: Page) {
     documentWidth: document.documentElement.scrollWidth,
     viewportWidth: document.documentElement.clientWidth,
   }));
-  expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.viewportWidth);
+  expect(
+    dimensions.documentWidth,
+    `No horizontal overflow at ${dimensions.viewportWidth}px viewport`,
+  ).toBeLessThanOrEqual(dimensions.viewportWidth);
 }
 
-test.describe("mobile Speaking journey (isolated CI database only)", () => {
+async function expectResponsiveLayout(page: Page, keyElement: Locator) {
+  for (const width of [390, 768, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(keyElement).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  }
+  // Preserve the existing mobile interactions after each responsive check.
+  await page.setViewportSize({ width: 390, height: 844 });
+}
+
+test.describe("responsive Speaking journey (isolated CI database only)", () => {
   test.skip(
     Boolean(process.env.PLAYWRIGHT_BASE_URL),
     "This journey creates an account and speaking attempt; run only against the isolated PostgreSQL service in CI.",
@@ -44,7 +57,7 @@ test.describe("mobile Speaking journey (isolated CI database only)", () => {
       has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
     });
     await expect(testCard).toBeVisible({ timeout: 15_000 });
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, testCard);
     await expect(testCard.getByRole("button", { name: "Start speaking test" })).toBeVisible();
     await testCard.getByRole("button", { name: "Start speaking test" }).click();
 
@@ -87,7 +100,7 @@ test.describe("mobile Speaking journey (isolated CI database only)", () => {
       await expect(page.getByRole("heading", { name: new RegExp(`Part ${partNumber}`) })).toBeVisible({
         timeout: 15_000,
       });
-      await expectNoHorizontalOverflow(page);
+      if (partNumber === 1) await expectResponsiveLayout(page, page.getByRole("heading", { name: new RegExp(`Part ${partNumber}`) }));
 
       // Parts 1 and 2 expose a UI action to skip the preparation countdown.
       const startSpeaking = page.getByRole("button", { name: "Start speaking now" });
@@ -128,7 +141,7 @@ test.describe("mobile Speaking journey (isolated CI database only)", () => {
     await expect(page.locator(".result-card .score")).toHaveText(["7", "7", "7"]);
     await expect(page.getByText("Mobile Speaking deterministic feedback.")).toHaveCount(3);
     expect(evaluationCalls).toBe(3);
-    await expectNoHorizontalOverflow(page);
+    await expectResponsiveLayout(page, page.getByRole("heading", { name: "Your Speaking review" }));
 
     for (let index = 0; index < transcripts.length; index += 1) {
       const details = page.locator(".transcript-details").nth(index);
