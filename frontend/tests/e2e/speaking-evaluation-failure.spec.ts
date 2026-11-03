@@ -120,7 +120,7 @@ test.describe("Speaking evaluation failure (isolated CI database only)", () => {
     await expect(page.getByRole("heading", { name: "Your Speaking review" })).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText("Speaking evaluation temporarily unavailable.").first()).toBeVisible();
+    await expect(page.getByText("AI evaluation is unavailable. Your response is saved.").first()).toBeVisible();
     await expect(page.locator(".pending-box")).toHaveCount(3);
     await expect(page.locator(".overall-band strong")).toHaveText("—");
     await expect(page.locator(".result-card .score")).toHaveText(["—", "—", "—"]);
