@@ -5,19 +5,14 @@ function uniqueEmail() {
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
-  for (const width of [390, 768, 1280]) {
-    await page.setViewportSize({ width, height: 844 });
-    const dimensions = await page.evaluate(() => ({
-      documentWidth: document.documentElement.scrollWidth,
-      viewportWidth: document.documentElement.clientWidth,
-    }));
-    expect(
-      dimensions.documentWidth,
-      `No horizontal overflow at ${width}px viewport`,
-    ).toBeLessThanOrEqual(dimensions.viewportWidth);
-  }
-  // Keep the existing mobile journey and its following assertions at 390px.
-  await page.setViewportSize({ width: 390, height: 844 });
+  const dimensions = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: document.documentElement.clientWidth,
+  }));
+  expect(
+    dimensions.documentWidth,
+    `No horizontal overflow at ${dimensions.viewportWidth}px viewport`,
+  ).toBeLessThanOrEqual(dimensions.viewportWidth);
 }
 
 async function waitForDraftSave(page: Page) {
@@ -29,11 +24,12 @@ async function waitForDraftSave(page: Page) {
 }
 
 async function expectResponsiveLayout(page: Page, keyElement: Locator) {
-  for (const width of [768, 1024, 1280]) {
+  for (const width of [390, 768, 1024, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(keyElement).toBeVisible();
     await expectNoHorizontalOverflow(page);
   }
+  // Preserve the existing mobile interactions after each responsive check.
   await page.setViewportSize({ width: 390, height: 844 });
 }
 
