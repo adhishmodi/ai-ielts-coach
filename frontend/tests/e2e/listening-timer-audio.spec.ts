@@ -107,7 +107,7 @@ test("Listening reports an audio playback failure clearly", async ({ page }) => 
     });
   });
   await page.getByRole("button", { name: "Play audio" }).click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('.floating-error[role="alert"]')).toContainText(
     "Audio playback failed. Please check your connection and try again.",
   );
 });
@@ -167,7 +167,7 @@ test("Listening submission can be retried after a transient failure", async ({ p
 
   const submitButton = page.getByRole("button", { name: "Submit test" });
   await submitButton.click();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator('.floating-error[role="alert"]')).toContainText(
     "Submission temporarily unavailable.",
     { timeout: 10_000 },
   );
