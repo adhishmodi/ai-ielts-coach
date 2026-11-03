@@ -48,7 +48,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(textAnswers.nth(2)).toHaveValue("weekday");
 
     await page.getByRole("button", { name: "Submit test" }).click();
-    await expect(page.getByRole("alert")).toBeHidden({ timeout: 15_000 });
+    await expect(page.locator('.floating-error[role="alert"]')).toBeHidden({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Your Reading review" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("8/8 correct")).toBeVisible();
     await expect(page.locator(".review-question .question-type")).toHaveText([
@@ -104,7 +104,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
 
     const submitButton = page.getByRole("button", { name: "Submit test" });
     await submitButton.click();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.locator('.floating-error[role="alert"]')).toContainText(
       "Reading submission temporarily unavailable.",
       { timeout: 10_000 },
     );
@@ -141,7 +141,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await editor.fill(draft);
     const saved = await saveResponse;
     expect((await saved.json()).word_count).toBe(21);
-    await expect(page.getByRole("status")).toContainText(/^Saved\b/, { timeout: 10_000 });
+    await expect(page.locator('.save-status[role="status"]')).toContainText(/^Saved\b/, { timeout: 10_000 });
     await expect(page.locator(".word-count")).toContainText(/\d+ words/);
   });
 
@@ -203,7 +203,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
       await editor.fill(responseText);
       const saved = await saveResponse;
       expect((await saved.json()).word_count).toBe(minimumWords + 5);
-      await expect(page.getByRole("status")).toContainText(/^Saved\b/, { timeout: 10_000 });
+      await expect(page.locator('.save-status[role="status"]')).toContainText(/^Saved\b/, { timeout: 10_000 });
     }
 
     await page.getByRole("button", { name: "Submit test" }).click();
@@ -323,7 +323,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
         );
         await continueButton.click();
         await failedSave;
-        await expect(page.getByRole("alert")).toContainText(
+        await expect(page.locator('.floating-error[role="alert"]')).toContainText(
           "Speaking save temporarily unavailable.",
           { timeout: 10_000 },
         );
