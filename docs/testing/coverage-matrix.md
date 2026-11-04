@@ -32,9 +32,9 @@ This document inventories the current automated test strategy. A listed test lay
 
 ## Current known Playwright suite and workflow behavior
 
-- Playwright test directory: `frontend/tests/e2e/` contains 39 tests across seventeen spec files, including `accessibility.spec.ts`, `keyboard-accessibility.spec.ts`, `keyboard-practice-flows.spec.ts`, `mobile-reading.spec.ts`, `mobile-listening.spec.ts`, `mobile-writing.spec.ts`, and `mobile-speaking.spec.ts`. Verify the current Actions run for pass/fail status.
+- Playwright test directory: `frontend/tests/e2e/` includes the existing skill, mobile, keyboard, accessibility, and failure-path specs plus `cross-browser-stateful.spec.ts` for authenticated state retention and a persisted Reading submission/review journey. Verify current test counts and pass/fail in Actions.
 - Configuration: `frontend/playwright.config.ts`.
-- CI full stateful browser suite: Chromium with retry enabled; the deployed read-only public-page smoke suite runs independently in Chromium, Firefox, and WebKit. Traces, screenshots, and video are retained on failures according to config.
+- CI full stateful browser suite: Chromium runs the complete suite with retry enabled; Firefox and WebKit run the focused `cross-browser-stateful.spec.ts` journeys against their own isolated PostgreSQL service and seeded content. The deployed read-only public-page smoke suite remains independent and runs in Chromium, Firefox, and WebKit. Traces, screenshots, and video are retained on failures according to config.
 - The isolated browser workflow applies Alembic migrations, runs `backend/scripts/seed_e2e_practice.py`, starts FastAPI against its test PostgreSQL service, builds the frontend with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1`, and runs `npm run test:e2e`. This suite may mutate data and must stay pointed at disposable CI data.
 - The browser smoke workflow runs `npx playwright test tests/e2e/production-smoke.spec.ts` in Chromium, Firefox, and WebKit against a local frontend build. It checks public login/registration forms, 390px horizontal overflow, and that protected skill routes load without mutating requests. It does not submit forms, sign in, create accounts, start practice attempts, or save drafts; auth redirect behavior is covered in the stateful E2E suite.
 - Do not set `PLAYWRIGHT_BASE_URL` to a production URL when running the full state-mutating E2E suite. The production workflow's dedicated spec is the only suite intended for deployed read-only checks.
@@ -59,3 +59,8 @@ When changing test coverage:
 ## API ownership audit
 
 `backend/tests/test_api_ownership_audit.py` verifies cross-user isolation for Reading, Listening, Writing, and Speaking: foreign users cannot list another user's attempts, retrieve attempt details, submit Reading/Listening attempts, edit Writing drafts, overwrite Speaking transcripts, or evaluate another user's Speaking response. The tests use registered test accounts and seeded records in the isolated backend test database. API ownership gaps outside these exercised operations remain subject to route-by-route review.
+
+
+## Stateful cross-browser journeys
+
+`frontend/tests/e2e/cross-browser-stateful.spec.ts` runs in Firefox and WebKit against the isolated CI PostgreSQL database. It verifies registration/authentication, session and token retention across skill navigation and reload, and a seeded Reading attempt submitted, its persisted detail verified through the authenticated API, then rechecked after browser reload (the review itself is a client-side view, not a deep-link route). The full state-mutating suite remains Chromium-only; deployed production smoke remains read-only.

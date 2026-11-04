@@ -13,9 +13,13 @@ concurrency:
 
 jobs:
   browser:
-    name: Playwright end-to-end tests
+    name: Stateful E2E (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
 
     services:
       postgres:
@@ -99,9 +103,9 @@ jobs:
         working-directory: frontend
         run: npm install --ignore-scripts
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright browser
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Build frontend for isolated API
         working-directory: frontend
@@ -109,7 +113,8 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
 
-      - name: Run browser suite
+      - name: Run full stateful browser suite (Chromium)
+        if: matrix.browser == 'chromium'
         working-directory: frontend
         run: npx playwright test --project=chromium
         env:
@@ -119,11 +124,20 @@ jobs:
           PLAYWRIGHT_BASE_URL: ""
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
 
+      - name: Run focused stateful cross-browser journeys
+        if: matrix.browser != 'chromium'
+        working-directory: frontend
+        run: npx playwright test tests/e2e/cross-browser-stateful.spec.ts --project=${{ matrix.browser }}
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: ""
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
+
       - name: Upload browser and API diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-e2e-diagnostics
+          name: playwright-e2e-diagnostics-${{ matrix.browser }}
           path: |
             frontend/test-results/
             frontend/playwright-report/
