@@ -15,6 +15,7 @@ from app.services.auth import hash_password, verify_password
 from app.services.jwt import create_access_token
 
 from datetime import datetime, timedelta, timezone
+import logging
 
 from app.models.refresh_session import RefreshSession
 from app.services.refresh_token import (
@@ -22,6 +23,8 @@ from app.services.refresh_token import (
     hash_refresh_token,
 )
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/auth",
@@ -38,30 +41,42 @@ async def register(
     user_data: UserRegister,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(
-        select(User).where(User.email == user_data.email)
-    )
+    stage = "checking existing email"
+    try:
+        result = await db.execute(
+            select(User).where(User.email == user_data.email)
+        )
+        existing_user = result.scalar_one_or_none()
 
-    existing_user = result.scalar_one_or_none()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email is already registered"
+            )
 
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email is already registered"
+        stage = "hashing password"
+        user = User(
+            email=user_data.email,
+            hashed_password=hash_password(user_data.password),
+            full_name=user_data.full_name
         )
 
-    user = User(
-        email=user_data.email,
-        hashed_password=hash_password(user_data.password),
-        full_name=user_data.full_name
-    )
+        stage = "inserting user"
+        db.add(user)
+        await db.commit()
 
-    db.add(user)
-
-    await db.commit()
-    await db.refresh(user)
-
-    return user
+        stage = "refreshing inserted user"
+        await db.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
+        logger.exception("Registration failed while %s", stage)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed. Please try again."
+        )
 
 
 @router.post(
