@@ -416,6 +416,9 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
       // Wait for the part initialization effect before advancing; otherwise its
       // initial preparation state can race the click and hide the transcript.
       await expect(page.getByRole("heading", { name: "Prepare your answer" })).toBeVisible();
+      // Wait for the active-part initialization effect to populate the countdown;
+      // otherwise beginSpeaking can be overwritten by that effect's preparation reset.
+      await expect(page.locator(".countdown-ring strong")).not.toHaveText("0");
       await startSpeaking.click();
     }
     const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
