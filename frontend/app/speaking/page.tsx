@@ -19,6 +19,7 @@ type View = "select" | "test" | "results";
 type Phase = "preparation" | "speaking";
 
 type SpeechRecognitionEventLike = Event & {
+  resultIndex: number;
   results: {
     length: number;
     [index: number]: { [index: number]: { transcript: string } };
@@ -180,7 +181,7 @@ export default function SpeakingPage() {
       recognition.onresult = (event) => {
         let finalText = "";
         let interimText = "";
-        for (let i = 0; i < event.results.length; i += 1) {
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
           const segment = event.results[i][0].transcript;
           if (event.results[i].isFinal) finalText += segment + " ";
           else interimText += segment;
