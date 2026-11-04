@@ -376,3 +376,50 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     }
   });
 });
+
+  test("live speech recognition preserves final transcript segments across interim results and recognition restarts", async ({ page }) => {
+    await createAccountThroughUi(page);
+    await page.addInitScript(() => {
+      class FakeSpeechRecognition {
+        continuous = false;
+        interimResults = false;
+        lang = "";
+        onresult: ((event: any) => void) | null = null;
+        onerror: ((event: any) => void) | null = null;
+        onend: (() => void) | null = null;
+        start() {}
+        stop() {}
+      }
+      (window as any).SpeechRecognition = FakeSpeechRecognition;
+      (window as any).__emitSpeechResult = (transcript: string, isFinal: boolean) => {
+        const result = [{ transcript }];
+        (result as any).isFinal = isFinal;
+        const recognition = (window as any).__lastRecognition;
+        recognition?.onresult?.({ results: [result] });
+      };
+      const Original = (window as any).SpeechRecognition;
+      (window as any).SpeechRecognition = class extends Original {
+        constructor() {
+          super();
+          (window as any).__lastRecognition = this;
+        }
+      };
+    });
+    await page.goto("/speaking");
+    const testCard = page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
+    });
+    await expect(testCard).toBeVisible({ timeout: 15_000 });
+    await testCard.getByRole("button", { name: "Start speaking test" }).click();
+    const startSpeaking = page.getByRole("button", { name: "Start speaking now" });
+    if (await startSpeaking.isVisible().catch(() => false)) await startSpeaking.click();
+    const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
+    await expect(transcript).toBeVisible();
+    await page.evaluate(() => (window as any).__emitSpeechResult("Hello", false));
+    await expect(transcript).toHaveValue("");
+    await page.evaluate(() => (window as any).__emitSpeechResult("Hello there.", true));
+    await expect(transcript).toHaveValue("Hello there.");
+    await page.evaluate(() => (window as any).__emitSpeechResult("How are you?", true));
+    await expect(transcript).toHaveValue("Hello there. How are you?");
+  });
+
