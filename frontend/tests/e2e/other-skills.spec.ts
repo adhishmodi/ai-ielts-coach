@@ -412,7 +412,12 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(testCard).toBeVisible({ timeout: 15_000 });
     await testCard.getByRole("button", { name: "Start speaking test" }).click();
     const startSpeaking = page.getByRole("button", { name: "Start speaking now" });
-    if (await startSpeaking.isVisible().catch(() => false)) await startSpeaking.click();
+    if (await startSpeaking.isVisible().catch(() => false)) {
+      // Wait for the part initialization effect before advancing; otherwise its
+      // initial preparation state can race the click and hide the transcript.
+      await expect(page.getByRole("heading", { name: "Prepare your answer" })).toBeVisible();
+      await startSpeaking.click();
+    }
     const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
     await expect(transcript).toBeVisible();
     await page.evaluate(() => (window as any).__emitSpeechResult("Hello", false));
