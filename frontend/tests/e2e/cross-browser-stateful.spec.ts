@@ -36,7 +36,7 @@ test.describe("stateful cross-browser journeys (isolated CI database only)", () 
     await expect(page.locator(".test-card").first()).toBeVisible({ timeout: 20_000 });
 
     await page.reload();
-    await expect(page).toHaveURL(/\/reading$/);
+    await expect(page).toHaveURL(/reading$/);
     await expect(page.locator("header .muted").first()).toHaveText("Reading");
     await expect(page.locator(".test-card").first()).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
@@ -49,7 +49,7 @@ test.describe("stateful cross-browser journeys (isolated CI database only)", () 
     expect(retainedTokens.refresh).toBe(initialTokens.refresh);
   });
 
-  test("learner submits a seeded Reading attempt and verifies its persisted review data", async ({ page }) => {
+  test("learner submits a seeded Reading attempt and verifies persisted review data", async ({ page }) => {
     await registerLearner(page);
     await page.goto("/reading");
 
@@ -58,13 +58,15 @@ test.describe("stateful cross-browser journeys (isolated CI database only)", () 
     });
     await expect(testCard).toBeVisible({ timeout: 20_000 });
 
-    const startResponse = page.waitForResponse((response) =>
+    const startResponsePromise = page.waitForResponse((response) =>
       response.request().method() === "POST" &&
       /\/reading\/tests\/[^/]+\/start$/.test(response.url()) &&
       response.status() === 200,
     );
     await testCard.getByRole("button", { name: "Start test" }).click();
-    const startedAttempt = await startResponse.then((response) => response.json() as Promise<{ attempt_id: string }>);
+    const startResponse = await startResponsePromise;
+    const { attempt_id: attemptId } = await startResponse.json() as { attempt_id: string };
+    const apiBase = startResponse.url().split("/reading/tests/")[0];
     await expect(page.getByRole("heading", { name: "Passage 1" })).toBeVisible();
 
     const textAnswers = page.getByPlaceholder("Type your answer");
@@ -85,25 +87,29 @@ test.describe("stateful cross-browser journeys (isolated CI database only)", () 
     await expect(page.getByText("8/8 correct")).toBeVisible();
     await expect(page.getByRole("button", { name: "Back to tests" })).toBeVisible();
 
-    // The review UI is intentionally held in component state, so a page reload
-    // returns to the test list. Verify persistence through the authenticated API.
+    // The review view is component state, not a deep-link route. Verify persisted
+    // attempt detail through the authenticated API before and after browser reload.
+    async function expectPersistedAttempt() {
+      const persisted = await page.evaluate(async ({ attemptId, apiBase }) => {
+        const token = localStorage.getItem("access_token");
+        const response = await fetch(`${apiBase}/reading/attempts/${attemptId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        return { status: response.status, body: await response.json() };
+      }, { attemptId, apiBase });
+      expect(persisted.status).toBe(200);
+      expect(persisted.body.score).toBe(8);
+      expect(persisted.body.total_questions).toBe(8);
+      expect(persisted.body.answers).toHaveLength(8);
+      expect(persisted.body.answers.every((answer: { is_correct: boolean }) => answer.is_correct)).toBe(true);
+    }
+
+    await expectPersistedAttempt();
     await page.reload();
-    await expect(page).toHaveURL(/\/reading$/);
-    await expect(page.locator(".test-card").first()).toBeVisible({ timeout: 20_000 });
-
-    const persistedAttempt = await page.evaluate(async (attemptId) => {
-      const token = localStorage.getItem("access_token");
-      const response = await fetch(`/api/v1/reading/attempts/${attemptId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error(`Attempt detail request failed: ${response.status}`);
-      return response.json();
-    }, startedAttempt.attempt_id);
-
-    expect(persistedAttempt.attempt_id).toBe(startedAttempt.attempt_id);
-    expect(persistedAttempt.score).toBe(8);
-    expect(persistedAttempt.total_questions).toBe(8);
-    expect(persistedAttempt.answers).toHaveLength(8);
-    expect(persistedAttempt.answers.every((answer: { is_correct: boolean }) => answer.is_correct)).toBe(true);
+    await expect(page).toHaveURL(/reading$/);
+    await expect(page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Reading Test", exact: true }),
+    })).toBeVisible({ timeout: 20_000 });
+    await expectPersistedAttempt();
   });
 });
