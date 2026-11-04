@@ -22,7 +22,10 @@ type SpeechRecognitionEventLike = Event & {
   resultIndex: number;
   results: {
     length: number;
-    [index: number]: { [index: number]: { transcript: string } };
+    [index: number]: {
+      isFinal: boolean;
+      [index: number]: { transcript: string };
+    };
   };
 };
 type SpeechRecognitionLike = {
