@@ -63,4 +63,4 @@ When changing test coverage:
 
 ## Stateful cross-browser journeys
 
-`frontend/tests/e2e/cross-browser-stateful.spec.ts` runs in Firefox and WebKit against the isolated CI PostgreSQL database. It verifies registration/authentication, session and token retention across skill navigation and reload, and a seeded Reading attempt submitted and reviewed after a reload to prove persisted results. The full state-mutating suite remains Chromium-only; deployed production smoke remains read-only.
+`frontend/tests/e2e/cross-browser-stateful.spec.ts` runs in Firefox and WebKit against the isolated CI PostgreSQL database. It verifies registration/authentication, session and token retention across skill navigation and reload, and a seeded Reading attempt submitted, its persisted detail verified through the authenticated API, then rechecked after browser reload (the review itself is a client-side view, not a deep-link route). The full state-mutating suite remains Chromium-only; deployed production smoke remains read-only.
