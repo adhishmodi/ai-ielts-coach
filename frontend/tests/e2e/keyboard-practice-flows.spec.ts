@@ -25,6 +25,25 @@ async function tabUntilFocused(page: Page, target: Locator, maxTabs = 80) {
   throw new Error(`Could not reach ${await target.toString()} using Tab within ${maxTabs} presses`);
 }
 
+async function selectRadioWithArrowKeys(page: Page, target: Locator) {
+  const groupName = await target.getAttribute("name");
+  expect(groupName).toBeTruthy();
+  const radios = page.locator(`input[type="radio"][name="${groupName}"]`);
+  const firstRadio = radios.first();
+  await tabUntilFocused(page, firstRadio);
+  const targetIndex = await target.evaluate((element) => {
+    const group = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
+      .filter((radio) => radio.name === (element as HTMLInputElement).name);
+    return group.indexOf(element as HTMLInputElement);
+  });
+  const count = await radios.count();
+  for (let index = 0; index < count && !(await target.isChecked()); index += 1) {
+    await page.keyboard.press("ArrowDown");
+  }
+  await expect(target).toBeChecked();
+  expect(targetIndex).toBeGreaterThanOrEqual(0);
+}
+
 async function activateWithKeyboard(page: Page, target: Locator, key: "Enter" | "Space" = "Enter", maxTabs = 80) {
   await tabUntilFocused(page, target, maxTabs);
   await expect.poll(() => target.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
@@ -81,7 +100,8 @@ test.describe("keyboard-only practice task flows (isolated CI database only)", (
     await expect(page.getByRole("heading", { name: "Section 2: Transportation" })).toBeVisible();
 
     const taxiAnswer = page.getByLabel("Taxis are hard to get during rush hour");
-    await activateWithKeyboard(page, taxiAnswer, "Space", 200);
+    // Radio groups expose one Tab stop; move among options with arrow keys.
+    await selectRadioWithArrowKeys(page, taxiAnswer);
     await expect(taxiAnswer).toBeChecked();
     await activateWithKeyboard(page, page.getByRole("button", { name: "Submit test" }));
     await expect(page.getByRole("heading", { name: "Your Listening review" })).toBeVisible({ timeout: 15_000 });
