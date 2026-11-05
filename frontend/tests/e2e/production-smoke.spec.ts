@@ -66,9 +66,12 @@ test("protected skill pages load without creating user state", async ({ page }) 
   });
 
   for (const route of ["/reading", "/listening", "/writing", "/speaking"]) {
+    // This smoke workflow builds the frontend without starting the API server.
+    // Auth redirects require an API 401; a network failure is not a redirect.
     const response = await page.goto(route);
-    expect(response?.status()).toBeLessThan(400);
-    await expect(page.locator("body")).toBeVisible();
+    if (response) expect(response.status()).toBeLessThan(400);
+    await expect(page).toHaveURL((url) => url.pathname === route || url.pathname === "/login");
+    await expect(page.locator("main")).toBeVisible();
   }
 
   expect(mutatingRequests).toEqual([]);
