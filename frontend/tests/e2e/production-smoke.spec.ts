@@ -66,11 +66,12 @@ test("protected skill pages load without creating user state", async ({ page }) 
   });
 
   for (const route of ["/reading", "/listening", "/writing", "/speaking"]) {
-    // WebKit can interrupt the protected-route navigation when the app redirects
-    // to login. Assert the resulting page rather than page.goto()'s response.
-    await page.goto(route).catch(() => undefined);
-    await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+    // This smoke workflow builds the frontend without starting the API server.
+    // Auth redirects require an API 401; a network failure is not a redirect.
+    const response = await page.goto(route);
+    if (response) expect(response.status()).toBeLessThan(400);
+    await expect(page).toHaveURL(new RegExp(`${route.replace("/", "\\\\")}$`));
+    await expect(page.locator("main")).toBeVisible();
   }
 
   expect(mutatingRequests).toEqual([]);
