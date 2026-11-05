@@ -270,10 +270,12 @@ export default function SpeakingPage() {
   }
 
   async function finishPart() {
+    const part = activePart;
+    if (!part) return;
     const transcribed = await stopRecording();
-    const finalTranscript = transcribed ?? transcriptRef.current[activePart.id] ?? "";
+    const finalTranscript = transcribed ?? transcriptRef.current[part.id] ?? "";
     const saved = await saveCurrentPart(finalTranscript);
-    if (!saved || !activePart || !selectedTest) return;
+    if (!saved || !selectedTest) return;
     const nextIndex = activeIndex + 1;
     if (nextIndex < selectedTest.parts.length) {
       setActiveIndex(nextIndex);
