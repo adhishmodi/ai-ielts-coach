@@ -411,18 +411,15 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     });
     await expect(testCard).toBeVisible({ timeout: 15_000 });
     await testCard.getByRole("button", { name: "Start speaking test" }).click();
+    // The speaking view starts in preparation; wait for its initialized state
+    // before activating the transition so the effect cannot reset it afterward.
+    await expect(page.getByRole("heading", { name: "Prepare your answer" })).toBeVisible({ timeout: 15_000 });
     const startSpeaking = page.getByRole("button", { name: "Start speaking now" });
-    if (await startSpeaking.isVisible().catch(() => false)) {
-      // Wait for the part initialization effect before advancing; otherwise its
-      // initial preparation state can race the click and hide the transcript.
-      await expect(page.getByRole("heading", { name: "Prepare your answer" })).toBeVisible();
-      // Wait for the active-part initialization effect to populate the countdown;
-      // otherwise beginSpeaking can be overwritten by that effect's preparation reset.
-      await expect(page.locator(".phase-label")).toHaveText("PREPARE");
-      await expect(page.locator(".countdown-ring strong")).toHaveText(/[1-9]/);
-      await startSpeaking.click();
-      await expect(page.locator(".phase-label")).toHaveText("SPEAK");
-    }
+    await expect(startSpeaking).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(".phase-label")).toHaveText("PREPARE");
+    await expect(page.locator(".countdown-ring strong")).toHaveText(/[1-9]/);
+    await startSpeaking.click();
+    await expect(page.locator(".phase-label")).toHaveText("SPEAK");
     const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
     await expect(transcript).toBeVisible();
     await page.evaluate(() => (window as any).__emitSpeechResult("Hello", false));
