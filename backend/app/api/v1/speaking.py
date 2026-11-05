@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -26,8 +26,48 @@ from app.schemas.speaking import (
     SpeakingTestResponse,
 )
 from app.services.speaking import GeminiSpeakingEvaluator, calculate_speaking_overall_band
+from app.services.speech_transcription import GeminiAudioTranscriber
 
 router = APIRouter(prefix="/speaking", tags=["Speaking"])
+
+MAX_TRANSCRIPTION_AUDIO_BYTES = 20 * 1024 * 1024
+SUPPORTED_AUDIO_TYPES = {
+    "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg",
+    "audio/wav", "audio/x-wav", "audio/aac", "audio/flac",
+}
+
+
+@router.post("/transcribe")
+async def transcribe_speaking_audio(
+    request: Request,
+    current_user_id: str = Depends(get_current_user_id),
+):
+    if not settings.gemini_api_key:
+        raise HTTPException(status_code=503, detail="Speech transcription is not configured")
+
+    mime_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if mime_type not in SUPPORTED_AUDIO_TYPES:
+        raise HTTPException(status_code=415, detail="Unsupported audio format")
+
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_TRANSCRIPTION_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Recording exceeds the 20 MB limit")
+
+    audio = await request.body()
+    if not audio:
+        raise HTTPException(status_code=400, detail="Audio recording is empty")
+    if len(audio) > MAX_TRANSCRIPTION_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Recording exceeds the 20 MB limit")
+
+    try:
+        transcript = await GeminiAudioTranscriber(
+            settings.gemini_api_key, settings.gemini_model
+        ).transcribe(audio, mime_type)
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail="Speech transcription failed. Please retry or type your transcript.") from exc
+    return {"transcript": transcript}
+
+
 
 
 async def _owned_attempt(db: AsyncSession, attempt_id: UUID, user_id: str) -> SpeakingAttempt | None:
