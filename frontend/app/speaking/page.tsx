@@ -66,6 +66,7 @@ export default function SpeakingPage() {
   }, [transcripts]);
 
   useEffect(() => {
+    discardRecordingRef.current = false;
     void loadTests();
     setMicSupported(typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia));
     return () => {
