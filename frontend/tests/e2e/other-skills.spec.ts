@@ -430,7 +430,6 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await page.evaluate(() => (window as any).__emitSpeechResult("How are you?", true));
     await expect(transcript).toHaveValue("Hello there. How are you?");
 
-    const recognition = page.evaluate(() => (window as any).__lastRecognition);
     await page.evaluate(() => (window as any).__lastRecognition.onend?.());
     await expect.poll(() => page.evaluate(() => (window as any).__lastRecognition.startCount)).toBe(2);
   });
