@@ -54,6 +54,7 @@ export default function SpeakingPage() {
   const transcriptionPromiseRef = useRef<Promise<string | null> | null>(null);
   const resolveTranscriptionRef = useRef<((value: string | null) => void) | null>(null);
   const lastRecordedBlobRef = useRef<Blob | null>(null);
+  const discardRecordingRef = useRef(false);
 
   const activePart = useMemo(
     () => selectedTest?.parts.slice().sort((a, b) => a.order - b.order)[activeIndex] ?? null,
@@ -67,7 +68,12 @@ export default function SpeakingPage() {
   useEffect(() => {
     void loadTests();
     setMicSupported(typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia));
-    return () => stopRecording();
+    return () => {
+      discardRecordingRef.current = true;
+      const recorder = mediaRecorderRef.current;
+      if (recorder?.state === "recording") recorder.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
   }, []);
 
   useEffect(() => {
@@ -162,6 +168,13 @@ export default function SpeakingPage() {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
       recorder.onstop = async () => {
+        if (discardRecordingRef.current) {
+          stream.getTracks().forEach((track) => track.stop());
+          mediaStreamRef.current = null;
+          mediaRecorderRef.current = null;
+          resolveTranscriptionRef.current?.(null);
+          return;
+        }
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
         lastRecordedBlobRef.current = blob;
         stream.getTracks().forEach((track) => track.stop());
@@ -211,9 +224,18 @@ export default function SpeakingPage() {
     if (recorder?.state === "recording") {
       recorder.stop();
       setRecording(false);
-      return transcriptionPromiseRef.current ? await transcriptionPromiseRef.current : null;
+      const pending = transcriptionPromiseRef.current;
+      if (!pending) return null;
+      const result = await pending;
+      if (transcriptionPromiseRef.current === pending) transcriptionPromiseRef.current = null;
+      return result;
     }
-    if (transcriptionPromiseRef.current) return await transcriptionPromiseRef.current;
+    if (transcriptionPromiseRef.current) {
+      const pending = transcriptionPromiseRef.current;
+      const result = await pending;
+      if (transcriptionPromiseRef.current === pending) transcriptionPromiseRef.current = null;
+      return result;
+    }
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
     setRecording(false);
@@ -330,7 +352,7 @@ export default function SpeakingPage() {
         <section className="hero">
           <div className="eyebrow">SPEAKING PRACTICE</div>
           <h1>Practice like the real interview.</h1>
-          <p>Move through Parts 1, 2 and 3 with preparation time, timed speaking, microphone recording and live transcript capture.</p>
+          <p>Move through Parts 1, 2 and 3 with preparation time, timed speaking, microphone recording and automatic transcription.</p>
         </section>
         {error && <div role="alert" className="error-box page-message">{error}</div>}
         <section className="test-grid">
