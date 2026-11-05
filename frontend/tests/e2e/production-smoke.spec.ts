@@ -66,9 +66,11 @@ test("protected skill pages load without creating user state", async ({ page }) 
   });
 
   for (const route of ["/reading", "/listening", "/writing", "/speaking"]) {
-    const response = await page.goto(route);
-    expect(response?.status()).toBeLessThan(400);
-    await expect(page.locator("body")).toBeVisible();
+    // WebKit can interrupt the protected-route navigation when the app redirects
+    // to login. Assert the resulting page rather than page.goto()'s response.
+    await page.goto(route).catch(() => undefined);
+    await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
   }
 
   expect(mutatingRequests).toEqual([]);
