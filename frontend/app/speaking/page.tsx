@@ -464,6 +464,7 @@ export default function SpeakingPage() {
                 <button className={recording ? "record-button active" : "record-button"} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? "Stop recording" : "Start recording"}</button>
                 <button className="primary-button" disabled={saving || busy || isTranscribing || !(transcripts[activePart.id] ?? "").trim()} onClick={() => void finishPart()}>{activeIndex === (selectedTest?.parts.length ?? 1) - 1 ? "Finish test" : "Save & continue"}</button>
               </div>
+              <p className="browser-note">Audio is sent to Gemini for transcription and is not stored by this app.</p>
               {isTranscribing && <p className="browser-note" role="status">Please wait while your recording is transcribed.</p>}
               {!micSupported && <p className="browser-note">Microphone access is unavailable here. You can still type or paste your transcript.</p>}
               {lastRecordedBlobRef.current && !recording && !isTranscribing && error && <button className="ghost-button" onClick={() => void retryTranscription()}>Retry transcription</button>}
