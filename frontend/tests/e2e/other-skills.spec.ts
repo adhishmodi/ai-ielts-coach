@@ -438,9 +438,12 @@ test("Speaking records microphone audio and inserts the server-transcribed trans
   }
   await expect(transcript).toBeVisible({ timeout: 15_000 });
 
-  await page.getByRole("button", { name: "Start recording" }).click();
-  await expect(page.getByRole("button", { name: "Stop recording" })).toBeVisible();
-  await page.getByRole("button", { name: "Stop recording" }).click();
+  // Entering the speaking phase automatically starts recording when microphone
+  // access succeeds. Wait for that state instead of expecting a Start recording
+  // button that is hidden while recording is active.
+  const stopRecordingButton = page.getByRole("button", { name: "Stop recording" });
+  await expect(stopRecordingButton).toBeVisible({ timeout: 15_000 });
+  await stopRecordingButton.click();
 
   await expect(transcript).toHaveValue("I enjoy learning new skills and practising every day.", { timeout: 15_000 });
   expect(uploadedBytes).toBeGreaterThan(0);
