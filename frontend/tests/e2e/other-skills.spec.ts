@@ -421,6 +421,13 @@ test("Speaking records microphone audio and inserts the server-transcribed trans
   });
   await expect(testCard).toBeVisible({ timeout: 15_000 });
   await testCard.getByRole("button", { name: "Start speaking test" }).click();
+
+  // Part 1 may open on its preparation screen; advance to the recording/transcript UI.
+  const startSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
+  if (await startSpeakingButton.isVisible().catch(() => false)) {
+    await startSpeakingButton.click();
+  }
+
   const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
   await expect(transcript).toBeVisible({ timeout: 15_000 });
 
