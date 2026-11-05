@@ -387,7 +387,8 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
         onresult: ((event: any) => void) | null = null;
         onerror: ((event: any) => void) | null = null;
         onend: (() => void) | null = null;
-        start() {}
+        startCount = 0;
+        start() { this.startCount += 1; }
         stop() {}
       }
       (window as any).SpeechRecognition = FakeSpeechRecognition;
@@ -395,7 +396,7 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
         const result = [{ transcript }];
         (result as any).isFinal = isFinal;
         const recognition = (window as any).__lastRecognition;
-        recognition?.onresult?.({ results: [result] });
+        recognition?.onresult?.({ resultIndex: 0, results: [result] });
       };
       const Original = (window as any).SpeechRecognition;
       (window as any).SpeechRecognition = class extends Original {
@@ -428,5 +429,9 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     await expect(transcript).toHaveValue("Hello there.");
     await page.evaluate(() => (window as any).__emitSpeechResult("How are you?", true));
     await expect(transcript).toHaveValue("Hello there. How are you?");
+
+    const recognition = page.evaluate(() => (window as any).__lastRecognition);
+    await page.evaluate(() => (window as any).__lastRecognition.onend?.());
+    await expect.poll(() => page.evaluate(() => (window as any).__lastRecognition.startCount)).toBe(2);
   });
 
