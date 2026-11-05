@@ -377,60 +377,74 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
   });
 });
 
-  test("live speech recognition preserves final transcript segments across interim results and recognition restarts", async ({ page }) => {
-    await createAccountThroughUi(page);
-    await page.addInitScript(() => {
-      class FakeSpeechRecognition {
-        continuous = false;
-        interimResults = false;
-        lang = "";
-        onresult: ((event: any) => void) | null = null;
-        onerror: ((event: any) => void) | null = null;
-        onend: (() => void) | null = null;
-        startCount = 0;
-        start() { this.startCount += 1; }
-        stop() {}
+test("Speaking records microphone audio and inserts the server-transcribed transcript", async ({ page }) => {
+  await createAccountThroughUi(page);
+  await page.addInitScript(() => {
+    const fakeTrack = { stop() {} };
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: async () => ({ getTracks: () => [fakeTrack] }) },
+    });
+    class FakeMediaRecorder {
+      state = "inactive";
+      mimeType = "audio/webm";
+      ondataavailable: ((event: any) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() { this.state = "recording"; }
+      stop() {
+        this.state = "inactive";
+        queueMicrotask(() => {
+          this.ondataavailable?.({ data: new Blob(["fake microphone audio"], { type: "audio/webm" }) });
+          this.onstop?.();
+        });
       }
-      (window as any).SpeechRecognition = FakeSpeechRecognition;
-      (window as any).__emitSpeechResult = (transcript: string, isFinal: boolean) => {
-        const result = [{ transcript }];
-        (result as any).isFinal = isFinal;
-        const recognition = (window as any).__lastRecognition;
-        recognition?.onresult?.({ resultIndex: 0, results: [result] });
-      };
-      const Original = (window as any).SpeechRecognition;
-      (window as any).SpeechRecognition = class extends Original {
-        constructor() {
-          super();
-          (window as any).__lastRecognition = this;
-        }
-      };
-    });
-    await page.goto("/speaking");
-    const testCard = page.locator(".test-card").filter({
-      has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
-    });
-    await expect(testCard).toBeVisible({ timeout: 15_000 });
-    await testCard.getByRole("button", { name: "Start speaking test" }).click();
-    // The speaking view starts in preparation; wait for its initialized state
-    // before activating the transition so the effect cannot reset it afterward.
-    await expect(page.getByRole("heading", { name: "Prepare your answer" })).toBeVisible({ timeout: 15_000 });
-    const startSpeaking = page.getByRole("button", { name: "Start speaking now" });
-    await expect(startSpeaking).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator(".phase-label")).toHaveText("PREPARE");
-    await expect(page.locator(".countdown-ring strong")).toHaveText(/[1-9]/);
-    await startSpeaking.click();
-    await expect(page.locator(".phase-label")).toHaveText("SPEAK");
-    const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
-    await expect(transcript).toBeVisible();
-    await page.evaluate(() => (window as any).__emitSpeechResult("Hello", false));
-    await expect(transcript).toHaveValue("");
-    await page.evaluate(() => (window as any).__emitSpeechResult("Hello there.", true));
-    await expect(transcript).toHaveValue("Hello there.");
-    await page.evaluate(() => (window as any).__emitSpeechResult("How are you?", true));
-    await expect(transcript).toHaveValue("Hello there. How are you?");
-
-    await page.evaluate(() => (window as any).__lastRecognition.onend?.());
-    await expect.poll(() => page.evaluate(() => (window as any).__lastRecognition.startCount)).toBe(2);
+    }
+    (window as any).MediaRecorder = FakeMediaRecorder;
   });
 
+  let uploadedBytes = 0;
+  await page.route("**/speaking/transcribe", async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe("POST");
+    expect(request.headers()["content-type"]).toContain("audio/webm");
+    uploadedBytes = request.postDataBuffer()?.length ?? 0;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ transcript: "I enjoy learning new skills and practising every day." }),
+    });
+  });
+
+  await page.goto("/speaking");
+  const testCard = page.locator(".test-card").filter({
+    has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
+  });
+  await expect(testCard).toBeVisible({ timeout: 15_000 });
+  await testCard.getByRole("button", { name: "Start speaking test" }).click();
+
+  // Wait for the test view to finish rendering before checking its phase.
+  const startSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
+  const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
+
+  // Preparation can be skipped automatically when its timer reaches zero, so wait
+  // for either the explicit control or the transcript editor, then advance if needed.
+  await expect
+    .poll(async () => (await startSpeakingButton.isVisible()) || (await transcript.isVisible()), {
+      timeout: 15_000,
+    })
+    .toBe(true);
+  if (await startSpeakingButton.isVisible()) {
+    await startSpeakingButton.click();
+  }
+  await expect(transcript).toBeVisible({ timeout: 15_000 });
+
+  // Entering the speaking phase automatically starts recording when microphone
+  // access succeeds. Wait for that state instead of expecting a Start recording
+  // button that is hidden while recording is active.
+  const stopRecordingButton = page.getByRole("button", { name: "Stop recording" });
+  await expect(stopRecordingButton).toBeVisible({ timeout: 15_000 });
+  await stopRecordingButton.click();
+
+  await expect(transcript).toHaveValue("I enjoy learning new skills and practising every day.", { timeout: 15_000 });
+  expect(uploadedBytes).toBeGreaterThan(0);
+});

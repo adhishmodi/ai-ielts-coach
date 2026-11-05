@@ -13,46 +13,15 @@ import {
   SpeakingSubmitResponse,
   SpeakingTest,
   SpeakingEvaluateResponse,
+  transcribeSpeakingAudio,
 } from "../../lib/api";
 
 type View = "select" | "test" | "results";
 type Phase = "preparation" | "speaking";
 
-type SpeechRecognitionEventLike = Event & {
-  resultIndex: number;
-  results: {
-    length: number;
-    [index: number]: {
-      isFinal: boolean;
-      [index: number]: { transcript: string };
-    };
-  };
-};
-type SpeechRecognitionLike = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: Event) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
-
 function formatTime(seconds: number) {
   const safe = Math.max(0, seconds);
   return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
-}
-
-function getSpeechRecognition() {
-  if (typeof window === "undefined") return null;
-  const browser = window as typeof window & {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  };
-  const Constructor = browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
-  return Constructor ? new Constructor() : null;
 }
 
 export default function SpeakingPage() {
@@ -69,22 +38,23 @@ export default function SpeakingPage() {
   const [drafts, setDrafts] = useState<Record<string, SpeakingDraft>>({});
   const [evaluations, setEvaluations] = useState<Record<string, SpeakingEvaluation>>({});
   const [recording, setRecording] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
   const [micSupported, setMicSupported] = useState(false);
-  const [interimTranscript, setInterimTranscript] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState<SpeakingSubmitResponse | null>(null);
 
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const responseStartedAtRef = useRef<number | null>(null);
   const transcriptRef = useRef<Record<string, string>>({});
-  const recognitionActiveRef = useRef(false);
-  const recognitionFinalRef = useRef("");
+  const audioChunksRef = useRef<Blob[]>([]);
+  const transcriptionPromiseRef = useRef<Promise<string | null> | null>(null);
+  const resolveTranscriptionRef = useRef<((value: string | null) => void) | null>(null);
+  const lastRecordedBlobRef = useRef<Blob | null>(null);
+  const discardRecordingRef = useRef(false);
 
   const activePart = useMemo(
     () => selectedTest?.parts.slice().sort((a, b) => a.order - b.order)[activeIndex] ?? null,
@@ -96,17 +66,21 @@ export default function SpeakingPage() {
   }, [transcripts]);
 
   useEffect(() => {
+    discardRecordingRef.current = false;
     void loadTests();
-    setSpeechSupported(Boolean(getSpeechRecognition()));
     setMicSupported(typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia));
-    return () => stopRecording();
+    return () => {
+      discardRecordingRef.current = true;
+      const recorder = mediaRecorderRef.current;
+      if (recorder?.state === "recording") recorder.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
   }, []);
 
   useEffect(() => {
     if (view !== "test" || !activePart) return;
     setPhase(activePart.preparation_seconds > 0 ? "preparation" : "speaking");
     setSecondsLeft(activePart.preparation_seconds > 0 ? activePart.preparation_seconds : activePart.response_seconds);
-    setInterimTranscript("");
     stopRecording();
   }, [activePart, view]);
 
@@ -175,89 +149,103 @@ export default function SpeakingPage() {
   }
 
   async function startRecording() {
-    if (!activePart || recording) return;
-    const recognition = getSpeechRecognition();
-    if (recognition) {
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
-      recognition.onresult = (event) => {
-        let finalText = "";
-        let interimText = "";
-        for (let i = event.resultIndex; i < event.results.length; i += 1) {
-          const segment = event.results[i][0].transcript;
-          if (event.results[i].isFinal) finalText += segment + " ";
-          else interimText += segment;
-        }
-        if (finalText.trim()) {
-          recognitionFinalRef.current = (recognitionFinalRef.current + " " + finalText).trim();
-          setTranscripts((current) => ({ ...current, [activePart.id]: recognitionFinalRef.current }));
-        }
-        setInterimTranscript(interimText);
-      };
-      recognition.onerror = (event) => {
-        const errorName = (event as Event & { error?: string }).error;
-        if (errorName === "not-allowed" || errorName === "service-not-allowed") {
-          recognitionActiveRef.current = false;
-          setRecording(false);
-          setMessage("Microphone or speech-recognition permission was denied. You can type your transcript.");
-        } else {
-          setMessage("Speech recognition paused. Your captured transcript is preserved; use Start recording to resume.");
-        }
-      };
-      recognition.onend = () => {
-        if (recognitionActiveRef.current && recognitionRef.current === recognition) {
-          window.setTimeout(() => {
-            if (!recognitionActiveRef.current || recognitionRef.current !== recognition) return;
-            try { recognition.start(); }
-            catch { setMessage("Speech recognition could not resume. Your transcript is preserved; restart recording manually."); }
-          }, 250);
-        } else {
-          setRecording(false);
-        }
-      };
-      recognitionRef.current = recognition;
-      recognitionActiveRef.current = true;
-      try { recognition.start(); }
-      catch {
-        recognitionActiveRef.current = false;
-        recognitionRef.current = null;
-        setMessage("Speech recognition could not start. You can type your transcript or try again.");
-      }
+    if (!activePart || recording || isTranscribing) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setMessage("Audio recording is unavailable in this browser. You can type your transcript.");
+      return;
     }
 
-    if (navigator.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaStreamRef.current = stream;
-        const recorder = new MediaRecorder(stream);
-        recorder.onstop = () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      transcriptionPromiseRef.current = new Promise((resolve) => {
+        resolveTranscriptionRef.current = resolve;
+      });
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        if (discardRecordingRef.current) {
           stream.getTracks().forEach((track) => track.stop());
-        };
-        mediaRecorderRef.current = recorder;
-        recorder.start();
-      } catch {
-        setMessage("Microphone permission was not available. Transcript mode is still usable.");
-      }
+          mediaStreamRef.current = null;
+          mediaRecorderRef.current = null;
+          resolveTranscriptionRef.current?.(null);
+          return;
+        }
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        lastRecordedBlobRef.current = blob;
+        stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+
+        if (!blob.size) {
+          resolveTranscriptionRef.current?.(null);
+          return;
+        }
+
+        setIsTranscribing(true);
+        setMessage("Transcribing your recording…");
+        try {
+          const result = await transcribeSpeakingAudio(blob);
+          const transcript = result.transcript.trim();
+          if (!transcript) throw new Error("No speech was detected. Please retry or type your transcript.");
+          transcriptRef.current = { ...transcriptRef.current, [activePart.id]: transcript };
+          setTranscripts((current) => ({ ...current, [activePart.id]: transcript }));
+          setError("");
+          setMessage("Audio transcribed. Review or edit your transcript before continuing.");
+          resolveTranscriptionRef.current?.(transcript);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Transcription failed. You can type your transcript.");
+          setMessage("Your audio was captured, but transcription failed. Retry or type your transcript.");
+          resolveTranscriptionRef.current?.(null);
+        } finally {
+          setIsTranscribing(false);
+          resolveTranscriptionRef.current = null;
+        }
+      };
+
+      recorder.start();
+      setRecording(true);
+      setError("");
+      setMessage("Recording is active. Stop when you finish speaking to transcribe your answer.");
+    } catch {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      setRecording(false);
+      setMessage("Microphone permission was not available. You can type your transcript.");
     }
-    setRecording(true);
-    setMessage(speechSupported ? "Recording and live transcription are active." : "Recording is active. Type your transcript below if speech recognition is unavailable.");
   }
 
-  function stopRecording() {
-    recognitionActiveRef.current = false;
-    try { recognitionRef.current?.stop(); } catch {}
-    recognitionRef.current = null;
-    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
-    mediaRecorderRef.current = null;
+  async function stopRecording(): Promise<string | null> {
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === "recording") {
+      recorder.stop();
+      setRecording(false);
+      const pending = transcriptionPromiseRef.current;
+      if (!pending) return null;
+      const result = await pending;
+      if (transcriptionPromiseRef.current === pending) transcriptionPromiseRef.current = null;
+      return result;
+    }
+    if (transcriptionPromiseRef.current) {
+      const pending = transcriptionPromiseRef.current;
+      const result = await pending;
+      if (transcriptionPromiseRef.current === pending) transcriptionPromiseRef.current = null;
+      return result;
+    }
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
     setRecording(false);
+    return null;
   }
 
-  async function saveCurrentPart(): Promise<boolean> {
+  async function saveCurrentPart(transcriptOverride?: string): Promise<boolean> {
     if (!attempt || !activePart || saving) return false;
-    const transcript = transcriptRef.current[activePart.id]?.trim() ?? "";
+    const transcript = (transcriptOverride ?? transcriptRef.current[activePart.id] ?? "").trim();
     if (!transcript) {
       setError(`Part ${activePart.part_number} needs a transcript before you continue.`);
       return false;
@@ -282,9 +270,12 @@ export default function SpeakingPage() {
   }
 
   async function finishPart() {
-    stopRecording();
-    const saved = await saveCurrentPart();
-    if (!saved || !activePart || !selectedTest) return;
+    const part = activePart;
+    if (!part) return;
+    const transcribed = await stopRecording();
+    const finalTranscript = transcribed ?? transcriptRef.current[part.id] ?? "";
+    const saved = await saveCurrentPart(finalTranscript);
+    if (!saved || !selectedTest) return;
     const nextIndex = activeIndex + 1;
     if (nextIndex < selectedTest.parts.length) {
       setActiveIndex(nextIndex);
@@ -322,9 +313,28 @@ export default function SpeakingPage() {
     }
   }
 
+  async function retryTranscription() {
+    const blob = lastRecordedBlobRef.current;
+    if (!blob || !activePart || isTranscribing) return;
+    setIsTranscribing(true);
+    setError("");
+    try {
+      const result = await transcribeSpeakingAudio(blob);
+      const transcript = result.transcript.trim();
+      if (!transcript) throw new Error("No speech was detected. Please type your transcript.");
+      transcriptRef.current = { ...transcriptRef.current, [activePart.id]: transcript };
+      setTranscripts((current) => ({ ...current, [activePart.id]: transcript }));
+      setMessage("Audio transcribed. Review or edit your transcript before continuing.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Transcription failed.");
+    } finally {
+      setIsTranscribing(false);
+    }
+  }
+
   function updateTranscript(value: string) {
     if (!activePart) return;
-    recognitionFinalRef.current = value;
+    transcriptRef.current = { ...transcriptRef.current, [activePart.id]: value };
     setTranscripts((current) => ({ ...current, [activePart.id]: value }));
   }
 
@@ -345,7 +355,7 @@ export default function SpeakingPage() {
         <section className="hero">
           <div className="eyebrow">SPEAKING PRACTICE</div>
           <h1>Practice like the real interview.</h1>
-          <p>Move through Parts 1, 2 and 3 with preparation time, timed speaking, microphone recording and live transcript capture.</p>
+          <p>Move through Parts 1, 2 and 3 with preparation time, timed speaking, microphone recording and automatic transcription.</p>
         </section>
         {error && <div role="alert" className="error-box page-message">{error}</div>}
         <section className="test-grid">
@@ -450,14 +460,16 @@ export default function SpeakingPage() {
             </div>
           ) : (
             <div className="record-panel">
-              <div className="record-visual"><div className={recording ? "mic-orb active" : "mic-orb"}>🎙️</div><div><strong>{recording ? "Speak naturally" : "Recording paused"}</strong><span>{speechSupported ? "Live transcript is being captured." : "Live speech recognition is not available in this browser."}</span></div></div>
+              <div className="record-visual"><div className={recording ? "mic-orb active" : "mic-orb"}>🎙️</div><div><strong>{recording ? "Speak naturally" : isTranscribing ? "Transcribing audio…" : "Recording stopped"}</strong><span>{isTranscribing ? "Your audio is being converted to text." : "Your recording is transcribed after you stop."}</span></div></div>
               <textarea value={transcripts[activePart.id] ?? ""} onChange={(e) => updateTranscript(e.target.value)} placeholder="Your transcript will appear here. You can edit it if needed…" />
-              {interimTranscript && <div className="interim-text">{interimTranscript}</div>}
               <div className="record-actions">
                 <button className={recording ? "record-button active" : "record-button"} onClick={() => recording ? stopRecording() : void startRecording()}>{recording ? "Stop recording" : "Start recording"}</button>
-                <button className="primary-button" disabled={saving || busy || !(transcripts[activePart.id] ?? "").trim()} onClick={() => void finishPart()}>{activeIndex === (selectedTest?.parts.length ?? 1) - 1 ? "Finish test" : "Save & continue"}</button>
+                <button className="primary-button" disabled={saving || busy || isTranscribing || !(transcripts[activePart.id] ?? "").trim()} onClick={() => void finishPart()}>{activeIndex === (selectedTest?.parts.length ?? 1) - 1 ? "Finish test" : "Save & continue"}</button>
               </div>
+              <p className="browser-note">Audio is sent to Gemini for transcription and is not stored by this app.</p>
+              {isTranscribing && <p className="browser-note" role="status">Please wait while your recording is transcribed.</p>}
               {!micSupported && <p className="browser-note">Microphone access is unavailable here. You can still type or paste your transcript.</p>}
+              {lastRecordedBlobRef.current && !recording && !isTranscribing && error && <button className="ghost-button" onClick={() => void retryTranscription()}>Retry transcription</button>}
             </div>
           )}
         </>}

@@ -63,6 +63,28 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, retry
   return response.json() as Promise<T>;
 }
 
+export async function transcribeSpeakingAudio(audio: Blob): Promise<{ transcript: string }> {
+  const send = () => {
+    const headers = new Headers();
+    const access = getAccessToken();
+    if (access) headers.set("Authorization", `Bearer ${access}`);
+    headers.set("Content-Type", audio.type || "audio/webm");
+    return fetch(`${API_URL}/speaking/transcribe`, { method: "POST", headers, body: audio });
+  };
+
+  let response = await send();
+  if (response.status === 401 && await refreshToken()) response = await send();
+  if (!response.ok) {
+    let message = `Transcription failed (${response.status}). You can retry or type your transcript.`;
+    try {
+      const body = await response.json();
+      if (typeof body.detail === "string") message = body.detail;
+    } catch {}
+    throw new Error(message);
+  }
+  return response.json() as Promise<{ transcript: string }>;
+}
+
 export type WritingTask = {
   id: string;
   task_number: number;
