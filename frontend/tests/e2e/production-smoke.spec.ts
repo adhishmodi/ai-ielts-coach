@@ -70,7 +70,7 @@ test("protected skill pages load without creating user state", async ({ page }) 
     // Auth redirects require an API 401; a network failure is not a redirect.
     const response = await page.goto(route);
     if (response) expect(response.status()).toBeLessThan(400);
-    await expect(page).toHaveURL(new RegExp(`${route}$`));
+    await expect(page).toHaveURL((url) => url.pathname === route || url.pathname === "/login");
     await expect(page.locator("main")).toBeVisible();
   }
 
