@@ -19,9 +19,13 @@ type View = "select" | "test" | "results";
 type Phase = "preparation" | "speaking";
 
 type SpeechRecognitionEventLike = Event & {
+  resultIndex: number;
   results: {
     length: number;
-    [index: number]: { [index: number]: { transcript: string } };
+    [index: number]: {
+      isFinal: boolean;
+      [index: number]: { transcript: string };
+    };
   };
 };
 type SpeechRecognitionLike = {
@@ -79,6 +83,8 @@ export default function SpeakingPage() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const responseStartedAtRef = useRef<number | null>(null);
   const transcriptRef = useRef<Record<string, string>>({});
+  const recognitionActiveRef = useRef(false);
+  const recognitionFinalRef = useRef("");
 
   const activePart = useMemo(
     () => selectedTest?.parts.slice().sort((a, b) => a.order - b.order)[activeIndex] ?? null,
@@ -177,18 +183,47 @@ export default function SpeakingPage() {
       recognition.lang = "en-US";
       recognition.onresult = (event) => {
         let finalText = "";
-        for (let i = 0; i < event.results.length; i += 1) {
-          finalText += event.results[i][0].transcript;
+        let interimText = "";
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const segment = event.results[i][0].transcript;
+          if (event.results[i].isFinal) finalText += segment + " ";
+          else interimText += segment;
         }
-        setInterimTranscript("");
-        setTranscripts((current) => ({ ...current, [activePart.id]: finalText.trim() }));
+        if (finalText.trim()) {
+          recognitionFinalRef.current = (recognitionFinalRef.current + " " + finalText).trim();
+          setTranscripts((current) => ({ ...current, [activePart.id]: recognitionFinalRef.current }));
+        }
+        setInterimTranscript(interimText);
       };
-      recognition.onerror = () => setMessage("Speech recognition stopped. You can continue with manual transcript editing.");
-      recognition.onend = () => setRecording(false);
+      recognition.onerror = (event) => {
+        const errorName = (event as Event & { error?: string }).error;
+        if (errorName === "not-allowed" || errorName === "service-not-allowed") {
+          recognitionActiveRef.current = false;
+          setRecording(false);
+          setMessage("Microphone or speech-recognition permission was denied. You can type your transcript.");
+        } else {
+          setMessage("Speech recognition paused. Your captured transcript is preserved; use Start recording to resume.");
+        }
+      };
+      recognition.onend = () => {
+        if (recognitionActiveRef.current && recognitionRef.current === recognition) {
+          window.setTimeout(() => {
+            if (!recognitionActiveRef.current || recognitionRef.current !== recognition) return;
+            try { recognition.start(); }
+            catch { setMessage("Speech recognition could not resume. Your transcript is preserved; restart recording manually."); }
+          }, 250);
+        } else {
+          setRecording(false);
+        }
+      };
       recognitionRef.current = recognition;
-      try {
-        recognition.start();
-      } catch {}
+      recognitionActiveRef.current = true;
+      try { recognition.start(); }
+      catch {
+        recognitionActiveRef.current = false;
+        recognitionRef.current = null;
+        setMessage("Speech recognition could not start. You can type your transcript or try again.");
+      }
     }
 
     if (navigator.mediaDevices?.getUserMedia) {
@@ -210,6 +245,7 @@ export default function SpeakingPage() {
   }
 
   function stopRecording() {
+    recognitionActiveRef.current = false;
     try { recognitionRef.current?.stop(); } catch {}
     recognitionRef.current = null;
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
@@ -288,6 +324,7 @@ export default function SpeakingPage() {
 
   function updateTranscript(value: string) {
     if (!activePart) return;
+    recognitionFinalRef.current = value;
     setTranscripts((current) => ({ ...current, [activePart.id]: value }));
   }
 

@@ -376,3 +376,61 @@ test.describe("Reading, Writing, and Speaking workflows (isolated CI database on
     }
   });
 });
+
+  test("live speech recognition preserves final transcript segments across interim results and recognition restarts", async ({ page }) => {
+    await createAccountThroughUi(page);
+    await page.addInitScript(() => {
+      class FakeSpeechRecognition {
+        continuous = false;
+        interimResults = false;
+        lang = "";
+        onresult: ((event: any) => void) | null = null;
+        onerror: ((event: any) => void) | null = null;
+        onend: (() => void) | null = null;
+        startCount = 0;
+        start() { this.startCount += 1; }
+        stop() {}
+      }
+      (window as any).SpeechRecognition = FakeSpeechRecognition;
+      (window as any).__emitSpeechResult = (transcript: string, isFinal: boolean) => {
+        const result = [{ transcript }];
+        (result as any).isFinal = isFinal;
+        const recognition = (window as any).__lastRecognition;
+        recognition?.onresult?.({ resultIndex: 0, results: [result] });
+      };
+      const Original = (window as any).SpeechRecognition;
+      (window as any).SpeechRecognition = class extends Original {
+        constructor() {
+          super();
+          (window as any).__lastRecognition = this;
+        }
+      };
+    });
+    await page.goto("/speaking");
+    const testCard = page.locator(".test-card").filter({
+      has: page.getByRole("heading", { name: "E2E Speaking Test", exact: true }),
+    });
+    await expect(testCard).toBeVisible({ timeout: 15_000 });
+    await testCard.getByRole("button", { name: "Start speaking test" }).click();
+    // The speaking view starts in preparation; wait for its initialized state
+    // before activating the transition so the effect cannot reset it afterward.
+    await expect(page.getByRole("heading", { name: "Prepare your answer" })).toBeVisible({ timeout: 15_000 });
+    const startSpeaking = page.getByRole("button", { name: "Start speaking now" });
+    await expect(startSpeaking).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(".phase-label")).toHaveText("PREPARE");
+    await expect(page.locator(".countdown-ring strong")).toHaveText(/[1-9]/);
+    await startSpeaking.click();
+    await expect(page.locator(".phase-label")).toHaveText("SPEAK");
+    const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
+    await expect(transcript).toBeVisible();
+    await page.evaluate(() => (window as any).__emitSpeechResult("Hello", false));
+    await expect(transcript).toHaveValue("");
+    await page.evaluate(() => (window as any).__emitSpeechResult("Hello there.", true));
+    await expect(transcript).toHaveValue("Hello there.");
+    await page.evaluate(() => (window as any).__emitSpeechResult("How are you?", true));
+    await expect(transcript).toHaveValue("Hello there. How are you?");
+
+    await page.evaluate(() => (window as any).__lastRecognition.onend?.());
+    await expect.poll(() => page.evaluate(() => (window as any).__lastRecognition.startCount)).toBe(2);
+  });
+
