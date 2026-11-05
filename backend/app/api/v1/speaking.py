@@ -31,7 +31,7 @@ from app.services.speech_transcription import GeminiAudioTranscriber
 
 router = APIRouter(prefix="/speaking", tags=["Speaking"])
 
-MAX_TRANSCRIPTION_AUDIO_BYTES = 20 * 1024 * 1024
+MAX_TRANSCRIPTION_AUDIO_BYTES = 14 * 1024 * 1024
 SUPPORTED_AUDIO_TYPES = {
     "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg",
     "audio/wav", "audio/x-wav", "audio/aac", "audio/flac",
@@ -52,7 +52,7 @@ async def transcribe_speaking_audio(
 
     content_length = request.headers.get("content-length")
     if content_length and int(content_length) > MAX_TRANSCRIPTION_AUDIO_BYTES:
-        raise HTTPException(status_code=413, detail="Recording exceeds the 20 MB limit")
+        raise HTTPException(status_code=413, detail="Recording exceeds the 14 MB limit")
 
     audio = await request.body()
     if not audio:
