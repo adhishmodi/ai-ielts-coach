@@ -422,13 +422,20 @@ test("Speaking records microphone audio and inserts the server-transcribed trans
   await expect(testCard).toBeVisible({ timeout: 15_000 });
   await testCard.getByRole("button", { name: "Start speaking test" }).click();
 
-  // Part 1 may open on its preparation screen; advance to the recording/transcript UI.
+  // Wait for the test view to finish rendering before checking its phase.
   const startSpeakingButton = page.getByRole("button", { name: "Start speaking now" });
-  if (await startSpeakingButton.isVisible().catch(() => false)) {
+  const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
+
+  // Preparation can be skipped automatically when its timer reaches zero, so wait
+  // for either the explicit control or the transcript editor, then advance if needed.
+  await expect
+    .poll(async () => (await startSpeakingButton.isVisible()) || (await transcript.isVisible()), {
+      timeout: 15_000,
+    })
+    .toBe(true);
+  if (await startSpeakingButton.isVisible()) {
     await startSpeakingButton.click();
   }
-
-  const transcript = page.getByPlaceholder("Your transcript will appear here. You can edit it if needed…");
   await expect(transcript).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "Start recording" }).click();
