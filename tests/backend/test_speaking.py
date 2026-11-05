@@ -40,6 +40,42 @@ def test_speaking_scoring_rejects_empty_parts():
         calculate_speaking_overall_band([])
 
 
+def test_speaking_transcription_endpoint(client, auth_headers, monkeypatch):
+    from app.api.v1 import speaking as speaking_api
+
+    monkeypatch.setattr(speaking_api.settings, "gemini_api_key", "test-key")
+
+    class FakeTranscriber:
+        def __init__(self, api_key, model):
+            assert api_key == "test-key"
+
+        async def transcribe(self, audio, mime_type):
+            assert audio == b"fake audio bytes"
+            assert mime_type == "audio/webm"
+            return "This is my spoken answer."
+
+    monkeypatch.setattr(speaking_api, "GeminiAudioTranscriber", FakeTranscriber)
+    response = client.post(
+        "/api/v1/speaking/transcribe",
+        headers={**auth_headers, "Content-Type": "audio/webm"},
+        content=b"fake audio bytes",
+    )
+    assert response.status_code == 200
+    assert response.json() == {"transcript": "This is my spoken answer."}
+
+
+def test_speaking_transcription_rejects_unsupported_audio(client, auth_headers, monkeypatch):
+    from app.api.v1 import speaking as speaking_api
+
+    monkeypatch.setattr(speaking_api.settings, "gemini_api_key", "test-key")
+    response = client.post(
+        "/api/v1/speaking/transcribe",
+        headers={**auth_headers, "Content-Type": "text/plain"},
+        content=b"not audio",
+    )
+    assert response.status_code == 415
+
+
 def test_speaking_requires_auth(client):
     response = client.get("/api/v1/speaking/tests")
     assert response.status_code in (401, 403)
